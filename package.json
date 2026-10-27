@@ -1,0 +1,32 @@
+{
+  "name": "ecommerce-milton-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @app/storefront dev",
+    "dev:admin": "pnpm --filter @app/admin dev",
+    "dev:api": "pnpm --filter @app/api dev",
+    "dev:all": "pnpm --parallel -r dev",
+    "build": "pnpm -r --filter '!@app/storefront' build",
+    "test": "pnpm -r --filter '!@app/storefront' test",
+    "typecheck": "pnpm -r --filter '!@app/storefront' typecheck",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "db:migrate": "pnpm --filter @app/db migrate",
+    "db:seed": "pnpm --filter @app/db seed",
+    "lint": "eslint .",
+    "e2e": "node e2e/admin-catalog.mjs",
+    "e2e:store": "node e2e/storefront.mjs",
+    "dev:web": "pnpm --filter @app/web dev"
+  },
+  "devDependencies": {
+    "axe-core": "^4.14.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "puppeteer-core": "^25.16.0",
+    "typescript-eslint": "^8.72.0"
+  },
+  "packageManager": "pnpm@10.27.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

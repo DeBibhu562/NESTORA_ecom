@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@import "@app/ui/tokens.css";
+@source "../../../../packages/ui/src";
+
+body { background: var(--color-soft); color: var(--color-ink); font-family: var(--font-body); }
+h1, h2, h3 { font-family: var(--font-heading); }

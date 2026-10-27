@@ -1,0 +1,28 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: app, POSTGRES_PASSWORD: app, POSTGRES_DB: ecommerce }
+        ports: ["5442:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app" --health-interval 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://app:app@localhost:5442/ecommerce
+      REDIS_URL: redis://localhost:6390
+      JWT_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm db:migrate && pnpm db:seed
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

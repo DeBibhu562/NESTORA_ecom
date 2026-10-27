@@ -1,0 +1,17 @@
+/* Design tokens (Tailwind v4 @theme). Rebrand by editing this file only. */
+@theme {
+  --color-brand: #c4301c;
+  --color-brand-hover: #a82716;
+  --color-navy: #072835;
+  --color-canvas: #ffffff;
+  --color-soft: #f7f7f5;
+  --color-soft-hover: #ebebe6;
+  --color-line: #e4e4e4;
+  --color-ink: #072835;
+  --color-muted: #56696f; /* 5.6:1 on white (v1 #6a7e86 failed AA) */
+  --color-success: #0d8756;
+  --color-gold: #d49b29;
+  --font-heading: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-figtree), -apple-system, "Segoe UI", sans-serif;
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}

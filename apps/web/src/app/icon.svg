@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e3a4b"/>
+      <stop offset="100%" stop-color="#072835"/>
+    </linearGradient>
+    <linearGradient id="crimsonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e03823"/>
+      <stop offset="100%" stop-color="#b32412"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect width="48" height="48" rx="12" fill="url(#shieldGrad)"/>
+
+  <!-- Subtle Inner Border -->
+  <rect x="1" y="1" width="46" height="46" rx="11" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+
+  <!-- Heraldic Shield / Thermal Flask Outline -->
+  <path d="M12 14 L24 9 L36 14 V26 C36 33 24 39 24 39 C24 39 12 33 12 26 Z" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Flask Neck / Cap Accent -->
+  <rect x="21" y="6.5" width="6" height="4" rx="1.2" fill="url(#crimsonGrad)" stroke="#ffffff" stroke-width="0.8"/>
+
+  <!-- Stylized Monogram N -->
+  <!-- Left Pillar -->
+  <path d="M16 16.5 H20.5 V32 H16 Z" fill="url(#crimsonGrad)"/>
+
+  <!-- Diagonal Stroke -->
+  <path d="M18.5 16.5 L29.5 30.5 H32 L21 16.5 Z" fill="#ffffff"/>
+
+  <!-- Right Pillar -->
+  <path d="M27.5 16.5 H32 V32 H27.5 Z" fill="url(#crimsonGrad)"/>
+
+  <!-- Core Thermal Ember Sparkle -->
+  <circle cx="34" cy="14" r="1.5" fill="#f59e0b"/>
+</svg>
