@@ -57,3 +57,12 @@ it("allocate sums exactly", () => {
   expect(allocate(7, [1, 1, 1])).toEqual([3, 2, 2]);
   expect(allocate(0, [1, 2])).toEqual([0, 0]);
 });
+
+it("takes a milestone reward off after the coupon, capped, with GST reconciling", () => {
+  const base: PriceInput = { lines: [line("a", 150000), line("b", 50001)], freeShippingAbovePaise: 69900, shippingPaise: 9900, intraState: true };
+  const r = priceCart({ ...base, rewardPaise: 30000 });
+  expect(r.rewardDiscount).toBe(30000);
+  expect(r.total).toBe(200001 - 30000);
+  expect(r.lines.reduce((n, l) => n + l.reward, 0)).toBe(30000);
+  expect(priceCart({ ...base, lines: [line("a", 100)], rewardPaise: 30000 }).total).toBeGreaterThanOrEqual(0);
+});

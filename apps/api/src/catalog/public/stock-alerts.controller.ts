@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, HttpException, Post, Req } from "@nestjs/co
 import type { Request } from "express";
 import { z } from "zod";
 import { Public } from "../../auth/auth.types";
-import { RateLimit } from "../../common/rate-limit";
+import { Limiter } from "../../common/limiter.service";
 import { ZodPipe } from "../../common/zod.pipe";
 import { env } from "../../env";
 import { PrismaService } from "../../prisma.service";
@@ -16,17 +16,16 @@ export function normalizeContact(raw: string): string | null {
 }
 
 const dto = z.object({ variantId: z.string().min(1).max(40), contact: z.string().min(5).max(120) });
-const limiter = new RateLimit(env.STOCK_ALERT_LIMIT_PER_HOUR, 60 * 60 * 1000);
 
 @Public()
 @Controller("catalog/stock-alerts")
 export class StockAlertsController {
-  constructor(private readonly db: PrismaService) {}
+  constructor(private readonly db: PrismaService, private readonly limiter: Limiter) {}
 
   /** Always answers {ok:true} for well-formed input so it can't be used to probe which variants exist. */
   @Post() @HttpCode(200)
   async subscribe(@Body(new ZodPipe(dto)) b: z.infer<typeof dto>, @Req() req: Request) {
-    if (!limiter.allow(req.ip ?? "unknown")) throw new HttpException("Too many requests, try again later", 429);
+    await this.limiter.guard(`stock:${req.ip}`, env.STOCK_ALERT_LIMIT_PER_HOUR, 3600_000, "Too many requests, try again later");
     const contact = normalizeContact(b.contact);
     if (!contact) throw new HttpException({ title: "Enter a valid email or 10-digit mobile number", errors: [{ path: "contact", message: "Enter a valid email or 10-digit mobile number" }] }, 400);
     const v = await this.db.variant.findFirst({ where: { id: b.variantId, isActive: true, product: { status: "ACTIVE", deletedAt: null } }, select: { id: true } });

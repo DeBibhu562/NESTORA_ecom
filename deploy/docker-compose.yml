@@ -1,0 +1,68 @@
+# Production stack. Usage (from this folder, with a filled-in .env next to it):
+#   docker compose build && docker compose up -d && docker compose run --rm api sh deploy/seed.sh   # seed only on first install
+x-app: &app
+  image: nestora-app
+  restart: unless-stopped
+  env_file: .env
+  working_dir: /app
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment: { POSTGRES_USER: nestora, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}", POSTGRES_DB: ecommerce }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U nestora -d ecommerce"], interval: 5s, retries: 20 }
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+
+  api:
+    <<: *app
+    build:
+      context: ..
+      args:
+        NEXT_PUBLIC_WEB_API_URL: "${PUBLIC_URL}/v1"
+        NEXT_PUBLIC_ADMIN_API_URL: "${ADMIN_URL}/v1"
+        NEXT_PUBLIC_SITE_URL: "${PUBLIC_URL}"
+        NEXT_PUBLIC_BRAND_NAME: "${BRAND_NAME:-Nestora}"
+        NEXT_PUBLIC_FIREBASE_API_KEY: "${NEXT_PUBLIC_FIREBASE_API_KEY:-}"
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}"
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}"
+        NEXT_PUBLIC_FIREBASE_APP_ID: "${NEXT_PUBLIC_FIREBASE_APP_ID:-}"
+    command: sh deploy/start-api.sh
+    environment:
+      DATABASE_URL: "postgresql://nestora:${POSTGRES_PASSWORD}@postgres:5432/ecommerce"
+      REDIS_URL: "redis://redis:6379"
+      PORT: "4010"
+      SITE_URL: "${PUBLIC_URL}"
+      PUBLIC_API_URL: "${PUBLIC_URL}"
+      CORS_ORIGINS: "${PUBLIC_URL},${ADMIN_URL}"
+      UPLOAD_DIR: /app/apps/api/uploads
+      TRUST_PROXY: "1"
+    volumes: [uploads:/app/apps/api/uploads]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_started } }
+    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4010/v1/health || exit 1"], interval: 10s, retries: 12, start_period: 20s }
+
+  web:
+    <<: *app
+    command: pnpm --filter @app/web start
+    environment: { INTERNAL_API_URL: "http://api:4010/v1" }
+    depends_on: [api]
+
+  admin:
+    <<: *app
+    command: pnpm --filter @app/admin start
+    depends_on: [api]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "8081:8081"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddydata:/data"]
+    depends_on: [web, admin, api]
+
+volumes: { pgdata: {}, redisdata: {}, uploads: {}, caddydata: {} }

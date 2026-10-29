@@ -22,9 +22,9 @@ export function Problems({ error }: { error: unknown }) {
   if (!error) return null;
   const lines = error instanceof ApiError ? error.lines : [error instanceof Error ? error.message : "Something went wrong"];
   return (
-    <ul role="alert" className="space-y-1 rounded-lg border border-brand/30 bg-brand/5 p-3 text-sm text-brand">
-      {lines.map((l, i) => <li key={i}>{l}</li>)}
-    </ul>
+    <div role="alert" className="rounded-lg border border-brand/30 bg-brand/5 p-3 text-sm text-brand">
+      <ul className="space-y-1">{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+    </div>
   );
 }
 

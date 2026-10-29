@@ -14,7 +14,7 @@ export function Button({ variant = "primary", className, type = "button", ...res
     <button
       type={type}
       className={cx(
-        "inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold transition-colors",
+        "inline-flex min-h-11 items-center justify-center rounded-sm px-6 text-sm font-semibold transition-colors",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50",
         styles[variant],
         className,

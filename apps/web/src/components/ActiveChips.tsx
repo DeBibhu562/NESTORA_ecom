@@ -13,7 +13,7 @@ export function ActiveChips({ path, sp, facets }: { path: string; sp: URLSearchP
   const clear = new URLSearchParams(); if (sp.get("sort")) clear.set("sort", sp.get("sort")!); if (sp.get("q")) clear.set("q", sp.get("q")!);
   return (
     <ul className="flex flex-wrap items-center gap-2" aria-label="Active filters">
-      {chips.map((c) => <li key={c.label}><Link href={c.href} scroll={false} className="inline-flex min-h-9 items-center gap-1 rounded-full bg-soft-hover px-3 text-xs font-semibold hover:bg-line">{c.label}<span aria-hidden>✕</span><span className="sr-only">remove filter</span></Link></li>)}
+      {chips.map((c) => <li key={c.label}><Link href={c.href} scroll={false} className="inline-flex min-h-9 items-center gap-1 rounded-sm bg-soft-hover px-3 text-xs font-semibold hover:bg-line">{c.label}<span aria-hidden>✕</span><span className="sr-only">remove filter</span></Link></li>)}
       <li><Link href={`${path}${qs(clear)}`} scroll={false} className="text-xs underline">Clear all</Link></li>
     </ul>
   );

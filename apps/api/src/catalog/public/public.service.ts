@@ -98,7 +98,7 @@ export class PublicCatalogService {
     if (!cat) throw new NotFoundException("Category not found");
     const crumbs = path.split("/").map((_, i, a) => s.cats.find((c) => c.path === a.slice(0, i + 1).join("/"))!).map((c) => ({ name: c.name, path: c.path }));
     const children = s.cats.filter((c) => c.parentId === cat.id).sort((a, b) => a.position - b.position).map((c) => ({ name: c.name, path: c.path }));
-    return { name: cat.name, path: cat.path, description: cat.description, seoTitle: cat.seoTitle, seoDesc: cat.seoDesc, breadcrumbs: crumbs, children };
+    return { name: cat.name, path: cat.path, description: cat.description, imageUrl: cat.imageUrl, seoTitle: cat.seoTitle, seoDesc: cat.seoDesc, breadcrumbs: crumbs, children };
   }
 
   async product(slug: string) {
@@ -121,9 +121,11 @@ export class PublicCatalogService {
     if (p.warrantyMonths) specs.push({ label: "Warranty", value: `${p.warrantyMonths} months` });
 
     const used = new Set(p.variants.flatMap((v) => v.options.map((o) => o.optionValueId)));
-    const related = s.items.filter((i) => i.card.id !== p.id)
+    const pinned = await this.db.productRelation.findMany({ where: { fromId: p.id, type: "CROSS_SELL" }, orderBy: { position: "asc" }, select: { toId: true } });
+    const pinnedCards = pinned.map((r) => s.items.find((i) => i.card.id === r.toId)?.card).filter((c): c is NonNullable<typeof c> => !!c);
+    const related = [...pinnedCards, ...s.items.filter((i) => i.card.id !== p.id && !pinned.some((r) => r.toId === i.card.id))
       .sort((a, b) => Number(b.card.categoryPath === item.card.categoryPath) - Number(a.card.categoryPath === item.card.categoryPath) || Number(b.card.inStock) - Number(a.card.inStock) || b.createdAt - a.createdAt)
-      .slice(0, 8).map((i) => i.card);
+      .map((i) => i.card)].slice(0, 8);
 
     return {
       id: p.id, slug: p.slug, title: p.title, tagline: p.tagline, descriptionHtml: p.descriptionHtml, badges: p.badges,

@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Req, Res } from "@nestjs/common"
 import type { CookieOptions, Request, Response } from "express";
 import { z } from "zod";
 import { ZodPipe } from "../common/zod.pipe";
-import { env } from "../env";
+import { cookieSecure, env } from "../env";
 import { AuthService } from "./auth.service";
 import { AllowNoMfa, Ip, Public, Staff, type StaffClaims } from "./auth.types";
 
@@ -10,7 +10,7 @@ const loginDto = z.object({ email: z.string().email(), password: z.string().min(
 const codeDto = z.object({ code: z.string().regex(/^\d{6}$/) });
 
 type Tokens = Awaited<ReturnType<AuthService["login"]>>;
-const base: CookieOptions = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" };
+const base: CookieOptions = { httpOnly: true, sameSite: "lax", secure: cookieSecure };
 
 function setCookies(res: Response, t: Tokens) {
   res.cookie("at", t.access, { ...base, path: "/", maxAge: t.accessMaxAgeMs });

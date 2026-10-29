@@ -1,7 +1,8 @@
-import { Controller, Get, Header, Param, Query } from "@nestjs/common";
+import { Controller, Get, Header, NotFoundException, Param, Query } from "@nestjs/common";
 import { z } from "zod";
 import { Public } from "../../auth/auth.types";
 import { ZodPipe } from "../../common/zod.pipe";
+import { PrismaService } from "../../prisma.service";
 import { PublicCatalogService } from "./public.service";
 import { queryItems, suggest, type Filters } from "./query";
 
@@ -23,7 +24,7 @@ const listDto = z.object({
 @Public()
 @Controller("catalog")
 export class PublicCatalogController {
-  constructor(private readonly svc: PublicCatalogService) {}
+  constructor(private readonly svc: PublicCatalogService, private readonly db: PrismaService) {}
 
   @Get("categories") @Header("Cache-Control", CACHE)
   categories() { return this.svc.categoryTree(); }
@@ -56,4 +57,13 @@ export class PublicCatalogController {
 
   @Get("products/:slug") @Header("Cache-Control", CACHE)
   product(@Param("slug") slug: string) { return this.svc.product(slug); }
+
+  /** Delivery check for the PDP and cart. Unknown pincodes are a clean "not serviceable", not an error page. */
+  @Get("pincode/:pin") @Header("Cache-Control", CACHE)
+  async pincode(@Param("pin", new ZodPipe(z.string().regex(/^[1-9]\d{5}$/, "Enter a 6-digit pincode"))) pin: string) {
+    const r = await this.db.serviceablePincode.findUnique({ where: { pincode: pin } });
+    if (!r) throw new NotFoundException({ title: "Sorry, we don't deliver to this pincode yet" });
+    const day = 86_400_000, fmt = (d: number) => new Date(Date.now() + d * day).toISOString();
+    return { pincode: pin, city: r.city, state: r.state, codAllowed: r.codAllowed, etaDaysMin: r.etaDaysMin, etaDaysMax: r.etaDaysMax, etaFrom: fmt(r.etaDaysMin), etaTo: fmt(r.etaDaysMax) };
+  }
 }

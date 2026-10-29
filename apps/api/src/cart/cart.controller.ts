@@ -4,8 +4,9 @@ import { z } from "zod";
 import { Public } from "../auth/auth.types";
 import { ZodPipe } from "../common/zod.pipe";
 import { CartService, ENGRAVING_MAX, MAX_QTY_PER_LINE } from "./cart.service";
+import { cookieSecure } from "../env";
 
-const cookie: CookieOptions = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 30 * 24 * 3600 * 1000 };
+export const cartCookie: CookieOptions = { httpOnly: true, sameSite: "lax", secure: cookieSecure, path: "/", maxAge: 30 * 24 * 3600 * 1000 };
 const addDto = z.object({
   variantId: z.string().min(1).max(40),
   qty: z.number().int().min(1).max(MAX_QTY_PER_LINE).default(1),
@@ -25,7 +26,7 @@ export class CartController {
   @Post("items") @HttpCode(200)
   async add(@Body(new ZodPipe(addDto)) b: z.infer<typeof addDto>, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const c = await this.cart.add(req.cookies?.ct, b);
-    if (c.token) res.cookie("ct", c.token, cookie);
+    if (c.token) res.cookie("ct", c.token, cartCookie);
     return this.cart.view(c.id);
   }
 

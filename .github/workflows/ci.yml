@@ -10,6 +10,9 @@ jobs:
         ports: ["5442:5432"]
         options: >-
           --health-cmd "pg_isready -U app" --health-interval 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6390:6379"]
     env:
       DATABASE_URL: postgresql://app:app@localhost:5442/ecommerce
       REDIS_URL: redis://localhost:6390

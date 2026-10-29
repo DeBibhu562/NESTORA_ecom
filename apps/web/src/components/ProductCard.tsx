@@ -11,9 +11,9 @@ export function ProductCard({ card, priority = false }: { card: Card; priority?:
   const range = card.minPricePaise !== card.maxPricePaise;
 
   return (
-    <article className="group relative flex w-full flex-col rounded-2xl bg-soft p-3 transition-shadow focus-within:shadow-md hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden rounded-xl bg-white">
-        {src ? <img src={src} alt={picked ? `${card.title} in ${picked.value}` : card.image?.alt ?? card.title} width={card.image?.width ?? 600} height={card.image?.height ?? 600} loading={priority ? "eager" : "lazy"} className="size-full object-cover transition-opacity duration-150" /> : null}
+    <article className="group relative flex w-full flex-col bg-white">
+      <div className="relative aspect-square overflow-hidden bg-soft">
+        {src ? <img src={src} alt={picked ? `${card.title} in ${picked.value}` : card.image?.alt ?? card.title} width={card.image?.width ?? 600} height={card.image?.height ?? 600} loading={priority ? "eager" : "lazy"} className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" /> : null}
         {!picked && card.hoverImage && <img src={card.hoverImage.url} alt="" aria-hidden loading="lazy" className="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100" />}
         {card.discountPct > 0 && card.inStock && <Badge tone="discount" className="absolute left-2 top-2">{card.discountPct}% OFF</Badge>}
         {!card.inStock && <span className="absolute inset-x-0 bottom-0 bg-ink/80 py-1 text-center text-xs font-semibold text-white">Sold out</span>}
@@ -24,9 +24,10 @@ export function ProductCard({ card, priority = false }: { card: Card; priority?:
       </h3>
       {card.ratingCount > 0 && <p className="text-xs text-muted"><span className="text-gold" aria-hidden>★</span> {card.ratingAvg.toFixed(1)} ({card.ratingCount})</p>}
       <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
-        <span className="text-base font-bold text-brand">{range ? "From " : ""}{formatPaise(card.minPricePaise)}</span>
+        <span className="text-lg font-bold text-ink">{range ? "From " : ""}{formatPaise(card.minPricePaise)}</span>
         {card.discountPct > 0 && <s className="text-xs text-muted">{formatPaise(card.mrpPaise)}</s>}
       </p>
+      <p className="mt-0.5 text-xs text-muted">{card.categoryName}</p>
       {card.swatches.length > 0 && (
         <div role="group" aria-label="Colours" className="relative z-10 mt-2 flex flex-wrap gap-1.5">
           {card.swatches.slice(0, 6).map((s) => (

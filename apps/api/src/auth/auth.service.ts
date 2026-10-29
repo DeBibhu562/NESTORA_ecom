@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { PrismaService } from "../prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { Limiter } from "../common/limiter.service";
 import { env } from "../env";
 import { decrypt, encrypt, newTotpSecret, sha256, verifyPassword, verifyTotp } from "./crypto";
 
@@ -13,33 +14,28 @@ const WINDOW_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
-  // shortcut: per-instance counters; move to Redis rate limiting with the hardening epic or when running >1 API instance
-  private readonly fails = new Map<string, { n: number; since: number }>();
+  constructor(private readonly db: PrismaService, private readonly audit: AuditService, private readonly limiter: Limiter) {}
 
-  constructor(private readonly db: PrismaService, private readonly audit: AuditService) {}
-
-  private throttle(key: string) {
-    const f = this.fails.get(key);
-    if (f && Date.now() - f.since < WINDOW_MS && f.n >= MAX_FAILS) throw new HttpException("Too many attempts, try later", 429);
+  private async throttle(key: string) {
+    if ((await this.limiter.count(key)) >= MAX_FAILS) throw new HttpException("Too many attempts, try later", 429);
   }
-  private fail(key: string): never {
-    const f = this.fails.get(key);
-    this.fails.set(key, !f || Date.now() - f.since >= WINDOW_MS ? { n: 1, since: Date.now() } : { n: f.n + 1, since: f.since });
+  private async fail(key: string): Promise<never> {
+    await this.limiter.hit(key, WINDOW_MS);
     throw new UnauthorizedException("Invalid credentials");
   }
 
   async login(email: string, password: string, totp: string | undefined, ip: string | undefined, userAgent: string | undefined) {
-    const key = `${email.toLowerCase()}|${ip}`;
-    this.throttle(key);
+    const key = `stafffail:${email.toLowerCase()}|${ip}`;
+    await this.throttle(key);
     const staff = await this.db.staffUser.findUnique({ where: { email: email.toLowerCase() }, include: { role: { include: { permissions: true } } } });
     // always run a hash comparison to keep timing similar for unknown emails
     const ok = await verifyPassword(password, staff?.passwordHash ?? "scrypt$00$00");
-    if (!staff || !staff.isActive || !ok) this.fail(key);
+    if (!staff || !staff.isActive || !ok) return this.fail(key);
     if (staff.totpEnabled) {
       if (!totp) throw new UnauthorizedException({ title: "Authenticator code required", code: "TOTP_REQUIRED" });
-      if (!verifyTotp(decrypt(staff.totpSecret!), totp)) this.fail(key);
+      if (!verifyTotp(decrypt(staff.totpSecret!), totp)) return this.fail(key);
     }
-    this.fails.delete(key);
+    await this.limiter.clear(key);
     await this.db.staffUser.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
     await this.audit.log(staff.id, "auth.login", "StaffUser", staff.id, undefined, ip);
     return this.issue(staff.id, staff.role.permissions.map((p) => p.permission), staff.totpEnabled, ip, userAgent);

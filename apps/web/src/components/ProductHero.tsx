@@ -3,14 +3,17 @@ import { Badge, Button, Stepper, formatPaise } from "@app/ui";
 import { useMemo, useState } from "react";
 import type { ProductDetail } from "@/lib/api";
 import { ENGRAVING_NOTE, FREE_SHIPPING_ABOVE_PAISE } from "@/lib/store";
+import { useCart } from "@/lib/cart";
 import { discountPct, galleryFor, initialVariant, resolveVariant, selectValue, selectionOf, valueInStock } from "@/lib/variants";
 import { Gallery } from "./Gallery";
+import { PincodeCheck } from "./PincodeCheck";
 import { StockAlert } from "./StockAlert";
 
 /** Gallery + buy box share one selection so images, price, stock and URL follow the chosen variant without a page load. */
 export function ProductHero({ product: p, initialSku }: { product: ProductDetail; initialSku?: string }) {
   const [sel, setSel] = useState(() => { const v = initialVariant(p.variants, initialSku); return v ? selectionOf(p.options, v) : {}; });
   const [qty, setQty] = useState(1);
+  const { add, busy, error } = useCart();
   const variant = useMemo(() => resolveVariant(p.variants, p.options, sel), [p, sel]);
   const images = useMemo(() => galleryFor(p.media, variant, sel), [p.media, variant, sel]);
   const pct = variant ? discountPct(variant) : 0;
@@ -27,7 +30,7 @@ export function ProductHero({ product: p, initialSku }: { product: ProductDetail
     <div className="grid gap-8 lg:grid-cols-2">
       <Gallery key={images.map((m) => m.id).join()} images={images} title={p.title} />
 
-      <div className="space-y-5">
+      <div className="space-y-5 lg:sticky lg:top-28 lg:self-start">
         <div>
           {p.badges.length > 0 && <div className="mb-2 flex gap-2">{p.badges.map((b) => <Badge key={b} tone="sale">{b}</Badge>)}</div>}
           <h1 className="text-3xl md:text-4xl">{p.title}</h1>
@@ -38,7 +41,7 @@ export function ProductHero({ product: p, initialSku }: { product: ProductDetail
         {variant && (
           <div>
             <p className="flex flex-wrap items-baseline gap-x-3" aria-live="polite" aria-atomic="true">
-              <span className="text-3xl font-bold text-brand">{formatPaise(variant.pricePaise)}</span>
+              <span className="text-4xl font-bold text-ink">{formatPaise(variant.pricePaise)}</span>
               {pct > 0 && <><s className="text-muted">{formatPaise(variant.mrpPaise)}</s><Badge tone="discount">{pct}% OFF</Badge></>}
             </p>
             <p className="mt-1 text-xs text-muted">{pct > 0 && <>You save {formatPaise(variant.mrpPaise - variant.pricePaise)}. </>}Inclusive of all taxes. Free shipping above {formatPaise(FREE_SHIPPING_ABOVE_PAISE)}.</p>
@@ -66,7 +69,7 @@ export function ProductHero({ product: p, initialSku }: { product: ProductDetail
                       </button>
                     ) : (
                       <button key={v.id} type="button" aria-pressed={on} aria-label={label} onClick={() => choose(o.id, v.id)}
-                        className={`min-h-11 rounded-full border px-5 text-sm font-semibold transition-transform ${on ? "scale-[1.02] border-navy bg-navy text-white" : "border-line hover:bg-soft"} ${stocked ? "" : "text-muted line-through"}`}>
+                        className={`min-h-11 rounded-sm border px-5 text-sm font-semibold transition-transform ${on ? "scale-[1.02] border-navy bg-navy text-white" : "border-line hover:bg-soft"} ${stocked ? "" : "text-muted line-through"}`}>
                         {v.value}
                       </button>
                     );
@@ -86,16 +89,24 @@ export function ProductHero({ product: p, initialSku }: { product: ProductDetail
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <Stepper value={qty} onChange={setQty} min={1} max={maxQty} />
-              {/* shortcut: cart & checkout land in Phase 3; the buttons exist so layout/accessibility are final */}
-              <Button disabled className="flex-1">Add to cart</Button>
+              <Button className="flex-1" disabled={busy} onClick={() => add(variant.id, qty)}>{busy ? "Adding…" : "Add to cart"}</Button>
             </div>
-            <Button variant="secondary" disabled className="w-full">Buy it now</Button>
-            <p className="text-xs text-muted">Cart and checkout arrive in the next release.</p>
+            {error && <p role="alert" className="text-xs text-brand">{error}</p>}
           </div>
         ) : variant ? <StockAlert variantId={variant.id} /> : null}
 
-        <ul className="grid grid-cols-3 gap-2 border-t border-line pt-4 text-center text-xs text-muted" aria-label="Our promise">
-          <li>🚚<br />Fast delivery</li><li>↩<br />7-day returns</li><li>🔒<br />Secure payment</li>
+        <PincodeCheck />
+        {variant?.inStock && (
+          <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-line bg-white/95 p-3 lg:hidden">
+            <div className="min-w-0 flex-1"><p className="truncate text-xs text-muted">{p.title}</p><p className="text-lg font-bold">{formatPaise(variant.pricePaise)}</p></div>
+            <Button disabled={busy} onClick={() => add(variant.id, qty)}>{busy ? "Adding…" : "Add to cart"}</Button>
+          </div>
+        )}
+
+        <ul className="grid grid-cols-3 gap-2 border-t border-line pt-4 text-center text-xs font-semibold text-ink" aria-label="Our promise">
+          {[["Fast delivery", "M3 7h11v9H3zM14 10h4l3 3v3h-7"], ["Warranty included", "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z"], ["Secure payment", "M6 11V8a6 6 0 0 1 12 0v3M5 11h14v10H5z"]].map(([t, d]) => (
+            <li key={t} className="bg-soft p-3"><svg className="mx-auto mb-1 text-brand" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>{t}</li>
+          ))}
         </ul>
         {variant && <p className="text-xs text-muted">SKU: {variant.sku}</p>}
       </div>

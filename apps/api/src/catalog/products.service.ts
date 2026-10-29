@@ -70,14 +70,16 @@ export class ProductsService {
     return p;
   }
 
-  async list(q: { q?: string; status?: ProductStatus; categoryId?: string; cursor?: string; limit: number }) {
-    const where: Prisma.ProductWhereInput = { deletedAt: null, status: q.status, categoryId: q.categoryId, title: q.q ? { contains: q.q, mode: "insensitive" } : undefined };
+  async list(q: { q?: string; status?: ProductStatus | "DELETED"; categoryId?: string; cursor?: string; limit: number }) {
+    const deleted = q.status === "DELETED";
+    const where: Prisma.ProductWhereInput = { deletedAt: deleted ? { not: null } : null, status: q.status === "DELETED" ? undefined : q.status, categoryId: q.categoryId, title: q.q ? { contains: q.q, mode: "insensitive" } : undefined };
     const rows = await this.db.product.findMany({
       where, take: q.limit + 1, orderBy: [{ updatedAt: "desc" }, { id: "asc" }], ...(q.cursor ? { cursor: { id: q.cursor }, skip: 1 } : {}),
       select: { id: true, slug: true, title: true, status: true, updatedAt: true, category: { select: { name: true } }, media: { take: 1, orderBy: { position: "asc" }, select: { url: true, alt: true } }, variants: { select: { pricePaise: true, isActive: true, inventory: { select: { onHand: true, reserved: true } } } } },
     });
     const next = rows.length > q.limit ? rows.pop()!.id : null;
     return {
+      total: await this.db.product.count({ where }),
       items: rows.map(({ variants, media, category, ...p }) => ({
         ...p, category: category.name, image: media[0] ?? null, variantCount: variants.length,
         minPricePaise: variants.length ? Math.min(...variants.map((v) => v.pricePaise)) : null,
@@ -89,6 +91,7 @@ export class ProductsService {
 
   async update(id: string, b: Record<string, unknown> & { categoryId?: string; attributes?: Record<string, unknown>; descriptionHtml?: string }) {
     const cur = await this.get(id);
+    if (typeof b.slug === "string" && b.slug !== cur.slug && (await this.db.product.findUnique({ where: { slug: b.slug }, select: { id: true } }))) throw new BadRequestException("That URL slug is already used by another product");
     await this.assertAttrs(b.categoryId ?? cur.categoryId, b.attributes ?? (cur.attributes as Record<string, unknown>), false);
     const { descriptionHtml, attributes, ...rest } = b;
     return this.db.product.update({
@@ -112,9 +115,38 @@ export class ProductsService {
     return this.db.product.update({ where: { id }, data: { status }, include: this.full });
   }
 
+  /** Copies a product as a DRAFT with options and variants (new SKUs, no stock, no media) so it must be re-checked before publishing. */
+  async duplicate(id: string) {
+    const src = await this.get(id);
+    const copy = await this.create({
+      title: `${src.title} (Copy)`.slice(0, 160), categoryId: src.categoryId, tagline: src.tagline ?? undefined, descriptionHtml: src.descriptionHtml,
+      hsnCode: src.hsnCode, gstRateBp: src.gstRateBp, attributes: src.attributes as Record<string, unknown>, badges: src.badges,
+      warrantyMonths: src.warrantyMonths ?? undefined, personalizationEnabled: src.personalizationEnabled, personalizationPricePaise: src.personalizationPricePaise ?? undefined,
+      options: src.options.map((o) => ({ name: o.name, displayAs: o.displayAs, values: o.values.map((v) => ({ value: v.value, hexColor: v.hexColor ?? undefined })) })),
+    });
+    const newVal = new Map(copy.options.flatMap((o) => o.values.map((v) => [`${o.name}\u0000${v.value}`, v.id] as const)));
+    const oldVal = new Map(src.options.flatMap((o) => o.values.map((v) => [v.id, `${o.name}\u0000${v.value}`] as const)));
+    const tag = Date.now().toString(36).toUpperCase().slice(-4);
+    await this.db.$transaction(src.variants.map((v, i) => this.db.variant.create({
+      data: {
+        productId: copy.id, sku: `${v.sku}-C${tag}${i}`.slice(0, 40), pricePaise: v.pricePaise, mrpPaise: v.mrpPaise, weightGrams: v.weightGrams, position: i, isActive: v.isActive,
+        options: { create: v.options.map((o) => ({ optionValueId: newVal.get(oldVal.get(o.optionValueId)!)! })) },
+      },
+    })));
+    return this.get(copy.id);
+  }
+
   async archive(id: string) {
     await this.get(id);
     await this.db.product.update({ where: { id }, data: { deletedAt: new Date(), status: "ARCHIVED" } });
+  }
+
+  /** Undo a soft delete. It returns as ARCHIVED so nothing goes live without an explicit publish. */
+  async restore(id: string) {
+    const p = await this.db.product.findFirst({ where: { id, deletedAt: { not: null } }, select: { id: true } });
+    if (!p) throw new NotFoundException();
+    await this.db.product.update({ where: { id }, data: { deletedAt: null, status: "ARCHIVED" } });
+    return this.get(id);
   }
 
   // ── options ──

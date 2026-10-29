@@ -24,7 +24,7 @@ async function main() {
     create: { email, name: "Store Owner", passwordHash: hash(password), roleId: owner.id },
   });
 
-  // Category tree: bottles first; others are inactive placeholders for later phases
+  // Category tree: bottles only
   const bottles = await prisma.category.upsert({
     where: { slug: "bottles" }, update: {},
     create: { slug: "bottles", path: "bottles", name: "Bottles & Flasks", position: 1 },
@@ -37,13 +37,8 @@ async function main() {
       create: { slug, path: `bottles/${slug}`, name, parentId: bottles.id, position: i },
     });
   }
-  const future: [string, string][] = [["tiffins", "Lunchboxes & Tiffins"], ["casseroles", "Casseroles"], ["cookware", "Cookware"], ["storage", "Storage"]];
-  for (const [i, [slug, name]] of future.entries()) {
-    await prisma.category.upsert({
-      where: { slug }, update: {},
-      create: { slug, path: slug, name, position: i + 2, isActive: false },
-    });
-  }
+  // Bottles only: drop the placeholder categories earlier seeds created (a no-op once they're gone or if they hold products).
+  await prisma.category.deleteMany({ where: { slug: { in: ["tiffins", "casseroles", "cookware", "storage"] }, products: { none: {} } } });
 
   const attrs = [
     { key: "material", label: "Material", type: "ENUM", enumValues: ["SS 304", "Single-wall steel", "Copper", "Glass", "BPA-free plastic"], isFilterable: true, isRequired: true },
@@ -82,6 +77,10 @@ async function main() {
     where: { code: "UPI3" }, update: {},
     create: { code: "UPI3", type: "PERCENT", valueBp: 300, paymentMethods: ["UPI"], autoApply: true, startsAt: new Date("2026-01-01") },
   });
+  for (const [pincode, city, state, cod, min, max] of [["110001", "New Delhi", "DL", true, 2, 4], ["400001", "Mumbai", "MH", true, 3, 5], ["560001", "Bengaluru", "KA", true, 3, 5], ["600001", "Chennai", "TN", true, 3, 6], ["700001", "Kolkata", "WB", false, 4, 7]] as const) {
+    const d = { city, state, codAllowed: cod, etaDaysMin: min, etaDaysMax: max };
+    await prisma.serviceablePincode.upsert({ where: { pincode }, update: {}, create: { pincode, ...d } });
+  }
   await seedCatalog();
   console.log("seed ok");
 }

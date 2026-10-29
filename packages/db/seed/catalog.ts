@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prisma } from "../src/index";
+import { bottleSvg, categorySvg, heroSvg, showcaseSvg, type Kind } from "./art";
 
 const API = process.env.PUBLIC_API_URL ?? "http://localhost:4010";
 const DIR = fileURLToPath(new URL("../../../apps/api/uploads/seed", import.meta.url));
@@ -11,14 +12,7 @@ const HEX: Record<string, string> = {
   Teal: "#2a8c8c", Silver: "#c4c8cc", Copper: "#b87333", Panda: "#e5e5e5", Rocket: "#d9533f", Unicorn: "#c9a0dc", Navy: "#1f3555", Red: "#c4301c",
 };
 
-// Placeholder bottle art so the UI has something to render until real photography exists.
-function svg(color: string, label: string) {
-  const c = HEX[color] ?? "#8a8f94";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><rect width="600" height="600" fill="#f7f7f5"/>` +
-    `<rect x="255" y="70" width="90" height="50" rx="10" fill="#072835"/><rect x="240" y="115" width="120" height="30" rx="8" fill="#56696f"/>` +
-    `<rect x="215" y="140" width="170" height="410" rx="45" fill="${c}"/><rect x="235" y="190" width="14" height="300" rx="7" fill="#fff" opacity=".35"/>` +
-    `<text x="300" y="380" font-family="Georgia,serif" font-size="30" text-anchor="middle" fill="#fff" opacity=".9">${label}</text></svg>`;
-}
+const svg = (color: string, label: string, kind: Kind) => bottleSvg(HEX[color] ?? "#8a8f94", label, kind);
 
 type Spec = {
   slug: string; title: string; tagline: string; cat: string; prefix: string; hsn?: string; material: string; thermal?: string; usage: string;
@@ -81,7 +75,8 @@ export async function seedCatalog() {
   let made = 0;
 
   for (const s of SPECS) {
-    if (await prisma.product.findUnique({ where: { slug: s.slug } })) continue;
+    const art = (value: string) => { const file = `${s.slug}-${abbr(value).toLowerCase()}.svg`; writeFileSync(resolve(DIR, file), svg(value, s.title.split(" ")[0]!, s.cat as Kind)); return file; };
+    if (await prisma.product.findUnique({ where: { slug: s.slug } })) { for (const v of s.options.find((o) => o.name === s.imageOption)!.values) art(v); continue; } // refresh art in place
     const category = await prisma.category.findUniqueOrThrow({ where: { slug: s.cat } });
     const product = await prisma.product.create({
       data: {
@@ -97,8 +92,7 @@ export async function seedCatalog() {
 
     // one image per value of the image-driving option (colour etc.), plus a generic first image
     for (const [i, value] of s.options.find((o) => o.name === s.imageOption)!.values.entries()) {
-      const file = `${s.slug}-${abbr(value).toLowerCase()}.svg`;
-      writeFileSync(resolve(DIR, file), svg(value, s.title.split(" ")[0]!));
+      const file = art(value);
       await prisma.productMedia.create({ data: { productId: product.id, optionValueId: ov(s.imageOption, value).id, url: `${API}/uploads/seed/${file}`, alt: `${s.title} in ${value}`, width: 600, height: 600, position: i } });
     }
 
@@ -114,6 +108,12 @@ export async function seedCatalog() {
       if (onHand) await prisma.stockMovement.create({ data: { variantId: v.id, warehouseId: wh.id, delta: onHand, reason: "PURCHASE" } });
     }
     made++;
+  }
+  writeFileSync(resolve(DIR, "hero.svg"), heroSvg());
+  for (const [n, k, c] of [[1, "vacuum", "#b7bfc4"], [2, "copper", "#b87333"], [3, "sports", "#2f6fb0"], [4, "glass", "#4aa3b5"]] as [number, Kind, string][]) writeFileSync(resolve(DIR, `hero-${n}.svg`), showcaseSvg(k, c));
+  for (const k of ["vacuum", "single-wall", "copper", "glass", "sports", "kids"] as Kind[]) {
+    writeFileSync(resolve(DIR, `cat-${k}.svg`), categorySvg(k));
+    await prisma.category.updateMany({ where: { slug: k }, data: { imageUrl: `${API}/uploads/seed/cat-${k}.svg` } });
   }
   console.log(`catalog: ${made} new products (${SPECS.length} total specs)`);
 }

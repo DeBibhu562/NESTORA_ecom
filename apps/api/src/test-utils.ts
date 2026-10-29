@@ -6,7 +6,7 @@ import { setup } from "./setup";
 
 export async function boot() {
   const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
-  const app: INestApplication = mod.createNestApplication();
+  const app: INestApplication = mod.createNestApplication({ rawBody: true });
   setup(app, "http://localhost:3020");
   await app.listen(0);
   return { app, url: await app.getUrl() };

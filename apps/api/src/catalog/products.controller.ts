@@ -18,14 +18,15 @@ const createDto = z.object({
   hsnCode: z.string().regex(/^\d{4,8}$/), gstRateBp: z.number().int().refine((n) => [0, 500, 1200, 1800, 2800].includes(n), "Not a GST slab"),
   attributes: z.record(z.unknown()).optional(), badges: z.array(z.string().max(30)).max(6).optional(),
   warrantyMonths: z.number().int().min(0).max(120).optional(), personalizationEnabled: z.boolean().optional(), personalizationPricePaise: paise.optional(),
-  options: optionsDto.optional(),
+  options: optionsDto.optional(), brandId: z.string().min(1).nullable().optional(),
 });
 const updateDto = createDto.omit({ options: true }).partial().extend({ seoTitle: z.string().max(70).optional(), seoDesc: z.string().max(170).optional() });
 const statusDto = z.object({ status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]) });
 const genDto = z.object({ skuPrefix: z.string().regex(/^[A-Z0-9][A-Z0-9-]{1,20}$/), pricePaise: paise, mrpPaise: paise, weightGrams: z.number().int().positive().max(50_000) })
   .refine((d) => d.mrpPaise >= d.pricePaise, { message: "MRP must be at least the selling price", path: ["mrpPaise"] });
 const patchDto = z.array(z.object({ id: z.string(), pricePaise: paise.optional(), mrpPaise: paise.optional(), weightGrams: z.number().int().positive().max(50_000).optional(), barcode: z.string().max(40).nullable().optional(), isActive: z.boolean().optional() })).min(1).max(200);
-const listDto = z.object({ q: z.string().max(100).optional(), status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(), categoryId: z.string().optional(), cursor: z.string().optional(), limit: z.coerce.number().int().min(1).max(100).default(25) });
+const listDto = z.object({ q: z.string().max(100).optional(), status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED", "DELETED"]).optional(), categoryId: z.string().optional(), cursor: z.string().optional(), limit: z.coerce.number().int().min(1).max(100).default(25) });
+const bulkDto = z.object({ ids: z.array(z.string().min(1)).min(1).max(100), status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]) });
 const valueDto = z.object({ value: z.string().min(1).max(40), hexColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() });
 
 @Controller("admin/products")
@@ -53,6 +54,35 @@ export class ProductsController {
   async status(@Param("id") id: string, @Body(new ZodPipe(statusDto)) b: z.infer<typeof statusDto>, @Staff() s: StaffClaims) {
     const p = await this.svc.setStatus(id, b.status);
     await this.audit.log(s.id, "product.status", "Product", id, b);
+    return p;
+  }
+
+  /** Per-product outcome so one unpublishable item doesn't block the rest. */
+  @Post("bulk-status") @Perm("product:write") @HttpCode(200)
+  async bulkStatus(@Body(new ZodPipe(bulkDto)) b: z.infer<typeof bulkDto>, @Staff() s: StaffClaims) {
+    const failed: { id: string; message: string }[] = [];
+    let updated = 0;
+    for (const id of new Set(b.ids)) {
+      try { await this.svc.setStatus(id, b.status); updated++; } catch (e) {
+        const r = (e as { getResponse?: () => unknown }).getResponse?.() as { errors?: { message: string }[]; message?: string } | undefined;
+        failed.push({ id, message: r?.errors?.map((x) => x.message).join("; ") ?? r?.message ?? "Failed" });
+      }
+    }
+    await this.audit.log(s.id, "product.bulk_status", "Product", b.ids.join(",").slice(0, 200), { status: b.status, updated, failed: failed.length });
+    return { updated, failed };
+  }
+
+  @Post(":id/duplicate") @Perm("product:write")
+  async duplicate(@Param("id") id: string, @Staff() s: StaffClaims) {
+    const p = await this.svc.duplicate(id);
+    await this.audit.log(s.id, "product.duplicate", "Product", p.id, { from: id });
+    return p;
+  }
+
+  @Post(":id/restore") @Perm("product:write") @HttpCode(200)
+  async restore(@Param("id") id: string, @Staff() s: StaffClaims) {
+    const p = await this.svc.restore(id);
+    await this.audit.log(s.id, "product.restore", "Product", id);
     return p;
   }
 

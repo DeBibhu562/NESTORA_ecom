@@ -48,7 +48,7 @@ export function SearchBox({ initial = "" }: { initial?: string }) {
         type="search" value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKey}
         placeholder="What are you looking for?" aria-label="Search products" autoComplete="off" role="combobox"
         aria-expanded={show} aria-controls={`${id}-list`} aria-autocomplete="list" aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
-        className="min-h-11 w-full rounded-full border border-line bg-soft px-5 text-sm focus-visible:outline-2 focus-visible:outline-brand"
+        className="min-h-11 w-full rounded-sm border border-line bg-soft px-5 text-sm focus-visible:outline-2 focus-visible:outline-brand"
       />
       {show && (
         <ul id={`${id}-list`} role="listbox" aria-label="Suggestions" className="absolute inset-x-0 top-12 z-40 overflow-hidden rounded-2xl border border-line bg-white shadow-lg">

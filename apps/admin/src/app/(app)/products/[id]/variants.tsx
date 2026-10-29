@@ -82,7 +82,7 @@ export function Variants({ p, wh, onChange, reload, canWrite, canStock }: { p: P
             {p.options.map((o) => (
               <div key={o.id} className="flex flex-wrap items-center gap-2 text-sm">
                 <strong className="w-24">{o.name}</strong>
-                {o.values.map((v) => <span key={v.id} className="inline-flex items-center gap-1 rounded-full bg-soft px-3 py-1">{v.hexColor && <i className="size-3 rounded-full border border-line" style={{ background: v.hexColor }} />}{v.value}</span>)}
+                {o.values.map((v) => <span key={v.id} className="inline-flex items-center gap-1 rounded-sm bg-soft px-3 py-1">{v.hexColor && <i className="size-3 rounded-full border border-line" style={{ background: v.hexColor }} />}{v.value}</span>)}
                 {canWrite && <><Input aria-label={`New ${o.name} value`} placeholder="New value" value={newValue[o.id] ?? ""} onChange={(e) => setNewValue((n) => ({ ...n, [o.id]: e.target.value }))} className="max-w-40" /><Button variant="ghost" onClick={() => addValue(o.id)}>Add</Button></>}
               </div>
             ))}

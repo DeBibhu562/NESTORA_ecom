@@ -25,6 +25,7 @@ it("builds a cart from the cookie, re-prices server-side and merges duplicate ad
   expect(b.body.items).toHaveLength(1);
   expect(b.body.items[0]).toMatchObject({ qty: 3, unitPaise: variant.pricePaise });
   expect(b.body.subtotalPaise).toBe(variant.pricePaise * 3);
+  expect(Array.isArray(b.body.upsells)).toBe(true);
 
   const id = b.body.items[0].id;
   expect((await c.call("PATCH", `/cart/items/${id}`, { qty: 1 })).body.items[0].qty).toBe(1);

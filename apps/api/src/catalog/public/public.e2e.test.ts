@@ -21,7 +21,7 @@ describe("public catalog", () => {
 
   it("shows only active categories, with product counts", async () => {
     const tree = (await get("/categories")).body as { slug: string; productCount: number; children: { slug: string }[] }[];
-    expect(tree.map((c) => c.slug)).toEqual(["bottles"]); // tiffins/cookware/… are inactive
+    expect(tree.map((c) => c.slug)).toEqual(["bottles"]); // bottles is the only category
     expect(tree[0]!.productCount).toBe(12);
     expect(tree[0]!.children.map((c) => c.slug)).toContain("vacuum");
   });
@@ -67,8 +67,16 @@ describe("public catalog", () => {
     expect((await get("/products?category=../etc")).status).toBe(400);
     expect((await get("/products?price=abc")).status).toBe(400);
     expect((await get("/products?category=nope")).status).toBe(404);
-    expect((await get("/products?category=tiffins")).status).toBe(404); // inactive
+    expect((await get("/products?category=tiffins")).status).toBe(404); // not in the catalog
     expect((await get("/products/does-not-exist")).status).toBe(404);
+  });
+
+  it("checks pincodes: serviceable with ETA, unknown 404, malformed 400", async () => {
+    const ok = await get("/pincode/110001");
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ city: "New Delhi", codAllowed: true });
+    expect((await get("/pincode/999999")).status).toBe(404);
+    expect((await get("/pincode/12ab")).status).toBe(400);
   });
 });
 

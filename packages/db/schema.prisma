@@ -17,6 +17,8 @@ model User {
   email         String?        @unique
   emailVerified Boolean        @default(false)
   name          String?
+  passwordHash  String?
+  googleUid     String?        @unique // Firebase uid of the linked Google account
   isBlocked     Boolean        @default(false)
   addresses     Address[]
   orders        Order[]
@@ -65,6 +67,7 @@ model ConsentLog {
 model OtpChallenge {
   id         String    @id @default(cuid())
   target     String // phone or email
+  purpose    String    @default("login") // "signup" codes prove ownership of an address someone registered a password for
   codeHash   String
   attempts   Int       @default(0)
   expiresAt  DateTime
@@ -550,6 +553,9 @@ model Order {
   notes           String?
   cancelReason    String?
   invoiceNumber   String?            @unique
+  deliveredAt     DateTime? // starts the return window
+  internalNote    String?
+  messages        OrderMessage[]
   placedAt        DateTime?
   items           OrderItem[]
   payments        Payment[]
@@ -626,6 +632,10 @@ model Refund {
   reason           String
   status           String
   staffId          String?
+  returnId         String?
+  method           String   @default("ORIGINAL") // ORIGINAL | UPI | BANK
+  utr              String? // payout reference for manual refunds
+  paidAt           DateTime?
   createdAt        DateTime @default(now())
 }
 
@@ -653,6 +663,8 @@ model Shipment {
   courier     String?
   awb         String?         @unique
   labelUrl    String?
+  providerOrderId    String?
+  providerShipmentId String?
   status      String // CREATED | PICKED_UP | IN_TRANSIT | OFD | DELIVERED | RTO
   trackingUrl String?
   items       Json // [{orderItemId, qty}]
@@ -685,18 +697,55 @@ model ServiceablePincode {
 }
 
 model ReturnRequest {
-  id          String   @id @default(cuid())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id])
-  type        String // RETURN | EXCHANGE | WARRANTY
-  reason      String
-  status      String // REQUESTED | APPROVED | PICKUP_SCHEDULED | RECEIVED | REFUNDED | REJECTED
-  items       Json
-  photos      String[]
-  refundPaise Int?
-  createdAt   DateTime @default(now())
+  id            String        @id @default(cuid())
+  returnNumber  String        @unique // RET-100001
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id])
+  type          String // RETURN | EXCHANGE | WARRANTY
+  reason        String // DAMAGED | DEFECTIVE | WRONG_ITEM | NOT_AS_DESCRIBED | CHANGED_MIND
+  details       String?
+  status        String // REQUESTED | APPROVED | PICKUP_SCHEDULED | RECEIVED | REFUNDED | REJECTED
+  items         Json // [{orderItemId, qty, restock?: boolean}]
+  photos        String[]
+  refundPaise   Int?
+  refundMethod  String? // ORIGINAL | UPI | BANK
+  refundDetails String? // customer's UPI id / bank text, encrypted at rest
+  pickupAwb     String?
+  rejectReason  String?
+  decidedBy     String?
+  decidedAt     DateTime?
+  events        ReturnEvent[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@index([orderId])
+  @@index([status])
+}
+
+model ReturnEvent {
+  id        String        @id @default(cuid())
+  returnId  String
+  ret       ReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  type      String
+  message   String?
+  actor     String?
+  createdAt DateTime      @default(now())
+
+  @@index([returnId, createdAt])
+}
+
+// every customer message we send, so staff can see and resend them
+model OrderMessage {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  template  String
+  channel   String // EMAIL | WHATSAPP
+  toAddress String
+  ok        Boolean
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
 }
 
 // ───────── Engagement / Content ─────────
@@ -742,6 +791,9 @@ model Banner {
   id       String    @id @default(cuid())
   slot     String
   imageUrl String
+  title    String?
+  subtitle String?
+  ctaLabel String?
   link     String?
   position Int
   startsAt DateTime?

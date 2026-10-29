@@ -160,12 +160,36 @@ describe("catalog flow", () => {
     expect(low.status).toBe(200);
   });
 
+  it("duplicates as a draft, bulk-changes status per product, and gates both by permission", async () => {
+    const dup = await owner.call("POST", `/admin/products/${productId}/duplicate`);
+    expect(dup.status).toBe(201);
+    created.products.push(dup.body.id);
+    expect(dup.body).toMatchObject({ status: "DRAFT", title: expect.stringContaining("(Copy)") });
+    expect(dup.body.variants).toHaveLength(15);
+    expect(new Set(dup.body.variants.map((v: { sku: string }) => v.sku)).size).toBe(15);
+    expect(dup.body.variants.every((v: { options: unknown[] }) => v.options.length === 2)).toBe(true);
+
+    // the copy has no images, so publishing it fails while the original succeeds
+    const r = await owner.call("POST", "/admin/products/bulk-status", { ids: [productId, dup.body.id], status: "ACTIVE" });
+    expect(r.body.updated).toBe(1);
+    expect(r.body.failed).toEqual([{ id: dup.body.id, message: expect.stringContaining("image") }]);
+    expect((await support.call("POST", "/admin/products/bulk-status", { ids: [productId], status: "DRAFT" })).status).toBe(403);
+    expect((await support.call("POST", `/admin/products/${productId}/duplicate`)).status).toBe(403);
+    expect((await owner.call("GET", "/admin/products?limit=1")).body.total).toBeGreaterThan(1);
+  });
+
   it("lists with search and cursor pagination, and soft-deletes", async () => {
     const l = await owner.call("GET", `/admin/products?q=felice test ${tag}&limit=1`);
     expect(l.body.items).toHaveLength(1);
     expect(l.body.items[0]).toMatchObject({ variantCount: 15, minPricePaise: 80200 });
     expect((await owner.call("DELETE", `/admin/products/${productId}`)).status).toBe(204);
     expect((await owner.call("GET", `/admin/products/${productId}`)).status).toBe(404);
+
+    const gone = await owner.call("GET", `/admin/products?status=DELETED&q=felice test ${tag}`);
+    expect(gone.body.items.map((i: { id: string }) => i.id)).toContain(productId);
+    expect((await support.call("POST", `/admin/products/${productId}/restore`)).status).toBe(403);
+    expect((await owner.call("POST", `/admin/products/${productId}/restore`)).body).toMatchObject({ id: productId, status: "ARCHIVED", deletedAt: null });
+    expect((await owner.call("POST", `/admin/products/${productId}/restore`)).status).toBe(404); // not deleted any more
   });
 
   it("writes audit entries for mutations", async () => {

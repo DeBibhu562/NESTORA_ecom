@@ -14,10 +14,10 @@ export type Card = {
 export type Facet = { key: string; label: string; values: { value: string; label: string; count: number }[] };
 export type Crumb = { name: string; path: string };
 export type ListResponse = {
-  category: { name: string; path: string; description: string | null; seoTitle: string | null; seoDesc: string | null; breadcrumbs: Crumb[]; children: Crumb[] } | null;
+  category: { name: string; path: string; description: string | null; imageUrl: string | null; seoTitle: string | null; seoDesc: string | null; breadcrumbs: Crumb[]; children: Crumb[] } | null;
   items: Card[]; total: number; page: number; pages: number; facets: Facet[]; price: { min: number; max: number } | null; inStockCount: number;
 };
-export type CategoryNode = { id: string; name: string; slug: string; path: string; productCount: number; children: CategoryNode[] };
+export type CategoryNode = { id: string; name: string; slug: string; path: string; imageUrl: string | null; productCount: number; children: CategoryNode[] };
 export type OptionValue = { id: string; value: string; hexColor: string | null };
 export type Option = { id: string; name: string; displayAs: string; values: OptionValue[] };
 export type Variant = { id: string; sku: string; pricePaise: number; mrpPaise: number; optionValueIds: string[]; inStock: boolean; maxQty: number; weightGrams: number };
@@ -37,7 +37,8 @@ export async function orNotFound<T>(p: Promise<T>): Promise<T> {
 
 /** Server-side GET with ISR-style caching; 404 → NotFound so pages can call notFound(). */
 export async function apiGet<T>(path: string, revalidate = 30): Promise<T> {
-  const res = await fetch(`${API}${path}`, { next: { revalidate } });
+  // On the server, prefer the internal address (e.g. http://api:4010/v1) so pages don't loop out through the public IP.
+  const res = await fetch(`${process.env.INTERNAL_API_URL ?? API}${path}`, { next: { revalidate } });
   if (res.status === 404 || res.status === 400) throw new NotFound(path);
   if (!res.ok) throw new Error(`API ${res.status} for ${path}`);
   return res.json() as Promise<T>;

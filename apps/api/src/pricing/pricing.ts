@@ -4,17 +4,18 @@ export interface PriceCoupon { type: "PERCENT" | "FLAT" | "FREE_SHIPPING"; value
 export interface PriceInput {
   lines: PriceLine[];
   coupon?: PriceCoupon;
+  rewardPaise?: number; // milestone reward, taken off after the coupon
   paymentOfferBp?: number; // e.g. 300 = 3% off for UPI
   freeShippingAbovePaise: number;
   shippingPaise: number;
   intraState: boolean; // CGST+SGST vs IGST
 }
 export interface PricedLine {
-  id: string; subtotal: number; coupon: number; offer: number; net: number;
+  id: string; subtotal: number; coupon: number; reward: number; offer: number; net: number;
   tax: number; cgst: number; sgst: number; igst: number;
 }
 export interface PriceResult {
-  lines: PricedLine[]; subtotal: number; couponDiscount: number; offerDiscount: number;
+  lines: PricedLine[]; subtotal: number; couponDiscount: number; rewardDiscount: number; offerDiscount: number;
   shipping: number; tax: number; total: number; couponApplied: boolean;
 }
 
@@ -52,24 +53,27 @@ export function priceCart(input: PriceInput): PriceResult {
   const couponParts = allocate(couponDiscount, eligible);
   const afterCoupon = sub.map((s, i) => s - couponParts[i]!);  const afterCouponTotal = sum(afterCoupon);
 
-  // Offer applies to the post-coupon amount; free-shipping threshold is checked before it.
-  const offerDiscount = Math.round((afterCouponTotal * (input.paymentOfferBp ?? 0)) / 10000);
-  const offerParts = allocate(offerDiscount, afterCoupon);
+  // Free-shipping and milestone thresholds are checked on the post-coupon amount, before reward and offer.
+  const rewardDiscount = Math.min(input.rewardPaise ?? 0, afterCouponTotal);
+  const rewardParts = allocate(rewardDiscount, afterCoupon);
+  const afterReward = afterCoupon.map((a, i) => a - rewardParts[i]!);
+  const offerDiscount = Math.round((sum(afterReward) * (input.paymentOfferBp ?? 0)) / 10000);
+  const offerParts = allocate(offerDiscount, afterReward);
   const freeShip = (couponApplied && c!.type === "FREE_SHIPPING") || afterCouponTotal >= input.freeShippingAbovePaise;
   const shipping = lines.length === 0 || freeShip ? 0 : input.shippingPaise;
 
   const priced = lines.map((l, i): PricedLine => {
-    const net = afterCoupon[i]! - offerParts[i]!;
+    const net = afterReward[i]! - offerParts[i]!;
     const tax = Math.round((net * l.gstRateBp) / (10000 + l.gstRateBp));
     const cgst = input.intraState ? Math.floor(tax / 2) : 0; // odd paise goes to SGST
     return {
-      id: l.id, subtotal: sub[i]!, coupon: couponParts[i]!, offer: offerParts[i]!, net, tax,
+      id: l.id, subtotal: sub[i]!, coupon: couponParts[i]!, reward: rewardParts[i]!, offer: offerParts[i]!, net, tax,
       cgst, sgst: input.intraState ? tax - cgst : 0, igst: input.intraState ? 0 : tax,
     };
   });
   // shortcut: GST on shipping is not split out, add it when invoices are built (Phase 4).
   return {
-    lines: priced, subtotal, couponDiscount, offerDiscount, shipping,
+    lines: priced, subtotal, couponDiscount, rewardDiscount, offerDiscount, shipping,
     tax: sum(priced.map((p) => p.tax)), total: sum(priced.map((p) => p.net)) + shipping, couponApplied,
   };
 }

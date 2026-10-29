@@ -17,7 +17,7 @@ export function MainNav({ tree }: { tree: CategoryNode[] }) {
       <nav aria-label="Categories" className="hidden gap-1 lg:flex">
         {tree.map((c) => (
           <div key={c.id} className="group relative">
-            <Link href={`/c/${c.path}`} className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold hover:bg-soft">{c.name}{c.children.length > 0 && <span aria-hidden className="ml-1 text-xs">▾</span>}</Link>
+            <Link href={`/c/${c.path}`} className="inline-flex min-h-11 items-center rounded-sm px-4 text-sm font-semibold hover:bg-soft">{c.name}{c.children.length > 0 && <span aria-hidden className="ml-1 text-xs">▾</span>}</Link>
             {c.children.length > 0 && (
               <div className="invisible absolute left-0 top-full z-40 w-64 rounded-2xl border border-line bg-white p-2 opacity-0 shadow-lg transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
                 <Link href={`/c/${c.path}`} className="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-soft">All {c.name}</Link>

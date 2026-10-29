@@ -37,7 +37,7 @@ export type Option = { id: string; name: string; displayAs: string; values: Opti
 export type Variant = { id: string; sku: string; pricePaise: number; mrpPaise: number; weightGrams: number; barcode: string | null; isActive: boolean; options: { optionValueId: string }[]; inventory: { warehouseId: string; onHand: number; reserved: number }[] };
 export type Media = { id: string; url: string; alt: string; optionValueId: string | null };
 export type Product = {
-  id: string; slug: string; title: string; tagline: string | null; descriptionHtml: string; status: "DRAFT" | "ACTIVE" | "ARCHIVED"; categoryId: string;
+  id: string; slug: string; title: string; tagline: string | null; descriptionHtml: string; status: "DRAFT" | "ACTIVE" | "ARCHIVED"; categoryId: string; brandId: string | null; seoTitle: string | null; seoDesc: string | null;
   hsnCode: string; gstRateBp: number; attributes: Record<string, unknown>; badges: string[]; warrantyMonths: number | null;
   personalizationEnabled: boolean; personalizationPricePaise: number | null; options: Option[]; variants: Variant[]; media: Media[];
 };

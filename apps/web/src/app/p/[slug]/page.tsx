@@ -45,16 +45,16 @@ export default async function ProductPage({ params, searchParams }: Props) {
         <ProductHero product={p} initialSku={sku} />
       </div>
 
-      <section aria-label="Product information" className="max-w-3xl">
+      <section aria-label="Product information" className="max-w-3xl border border-line bg-white p-4 md:p-6">
         <Accordion defaultOpen="description" items={[
           { id: "description", title: "Description", content: <div className="prose-sm space-y-2 [&_li]:ml-5 [&_li]:list-disc" dangerouslySetInnerHTML={{ __html: p.descriptionHtml }} /> },
           ...(p.specs.length ? [{ id: "specs", title: "Specifications", content: <dl className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-x-4 gap-y-2">{p.specs.map((s) => <div key={s.label} className="contents"><dt className="font-semibold text-ink">{s.label}</dt><dd>{s.value}</dd></div>)}</dl> }] : []),
-          { id: "shipping", title: "Shipping & returns", content: <p>Free shipping on orders above {formatPaise(FREE_SHIPPING_ABOVE_PAISE)}. Easy 7-day returns on unused items in original packaging.</p> },
+          { id: "shipping", title: "Shipping", content: <p>Free shipping on orders above {formatPaise(FREE_SHIPPING_ABOVE_PAISE)}. Track your order any time from the Track page.</p> },
         ]} />
       </section>
 
       {p.related.length > 0 && (
-        <section aria-labelledby="related"><h2 id="related" className="mb-4 text-2xl">You may also like</h2><ProductGrid items={p.related.slice(0, 4)} /></section>
+        <section aria-labelledby="related"><p className="text-xs font-bold tracking-widest text-brand">KEEP EXPLORING</p><h2 id="related" className="mb-4 text-2xl md:text-3xl">You may also like</h2><ProductGrid items={p.related.slice(0, 4)} /></section>
       )}
     </main>
   );

@@ -41,15 +41,20 @@ export default async function CollectionPage(props: Props) {
     <main className="mx-auto max-w-7xl px-4 py-6">
       <JsonLd data={{ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: c.breadcrumbs.map((b, i) => ({ "@type": "ListItem", position: i + 1, name: b.name, item: `${SITE_URL}/c/${b.path}` })) }} />
       <Breadcrumbs crumbs={c.breadcrumbs.slice(0, -1)} current={c.name} />
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-3xl md:text-4xl">{c.name}</h1><p className="mt-1 text-sm text-muted" aria-live="polite">{data.total} product{data.total === 1 ? "" : "s"}</p></div>
-        <SortSelect />
-      </div>
+      <section className="mt-3 flex items-center justify-between gap-6 bg-cream px-6 py-8 md:px-10">
+        <div className="max-w-xl">
+          <h1 className="text-3xl md:text-4xl">{c.name}</h1>
+          {c.description && <p className="mt-2 text-sm text-muted md:text-base">{c.description}</p>}
+          <p className="mt-2 text-sm text-muted" aria-live="polite">{data.total} product{data.total === 1 ? "" : "s"}</p>
+        </div>
+        {c.imageUrl && <img src={c.imageUrl} alt="" width={240} height={240} className="hidden size-36 object-cover md:block" />}
+      </section>
       {c.children.length > 0 && (
-        <ul className="mt-4 flex flex-wrap gap-2" aria-label="Sub-categories">{c.children.map((s) => <li key={s.path}><Link href={`/c/${s.path}`} className="inline-flex min-h-10 items-center rounded-full border border-line px-4 text-sm font-semibold hover:bg-soft">{s.name}</Link></li>)}</ul>
+        <ul className="mt-4 flex flex-wrap gap-2" aria-label="Sub-categories">{c.children.map((s) => <li key={s.path}><Link href={`/c/${s.path}`} className="inline-flex min-h-10 items-center rounded-sm border border-line bg-white px-4 text-sm font-semibold transition-colors hover:border-navy">{s.name}</Link></li>)}</ul>
       )}
+      <div className="mt-4 flex justify-end"><SortSelect /></div>
       <div className="mt-4 grid gap-4 lg:grid-cols-[16rem_1fr] lg:gap-8">
-        <div><FilterPanel facets={data.facets} price={data.price} total={data.total} inStockCount={data.inStockCount} /></div>
+        <div className="lg:self-start"><FilterPanel facets={data.facets} price={data.price} total={data.total} inStockCount={data.inStockCount} /></div>
         <section aria-label="Products" className="min-w-0 space-y-4">
           <ActiveChips path={path} sp={sp} facets={data.facets} />
           {data.items.length ? <ProductGrid items={data.items} /> : (
@@ -58,7 +63,6 @@ export default async function CollectionPage(props: Props) {
           <Pagination path={path} sp={sp} page={data.page} pages={data.pages} />
         </section>
       </div>
-      {c.description && <p className="mt-12 max-w-3xl text-sm text-muted">{c.description}</p>}
-    </main>
+          </main>
   );
 }
