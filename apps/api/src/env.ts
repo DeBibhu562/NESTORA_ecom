@@ -18,7 +18,7 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default("uploads"),
   // Email: Gmail works with an app password, e.g. smtps://you%40gmail.com:APP_PASSWORD@smtp.gmail.com:465. Unset = emails are only logged.
   SMTP_URL: z.string().optional(),
-  MAIL_FROM: z.string().default("Nestora <no-reply@localhost>"),
+  MAIL_FROM: z.string().default("Livoware <no-reply@livoware.store>"),
   // Google sign-in is verified against this Firebase project; unset = Google login is off.
   FIREBASE_PROJECT_ID: z.string().optional(),
   // WhatsApp Cloud API; unset = WhatsApp messages are skipped.

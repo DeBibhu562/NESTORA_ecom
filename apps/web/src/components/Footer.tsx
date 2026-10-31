@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { apiGet, BRAND, type CategoryNode } from "@/lib/api";
 import { FREE_SHIPPING_ABOVE_PAISE } from "@/lib/store";
-import { NestoraLogo } from "./NestoraLogo";
+import { LivowareLogo } from "./LivowareLogo";
 
 const head = "mb-3 text-sm font-bold tracking-wide text-white";
 const link = "text-sm text-white/65 transition hover:text-white hover:underline";
@@ -17,8 +17,8 @@ export async function Footer() {
       </div>
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <NestoraLogo variant="footer" />
-          <p className="mt-4 max-w-xs text-sm text-white/65">Everyday drinkware made to last. Insulated, leak-proof and trusted by families since 1972.</p>
+          <LivowareLogo variant="footer" />
+          <p className="mt-4 max-w-xs text-sm text-white/65">Everyday drinkware made to last. Insulated, leak-proof and built for daily use.</p>
         </div>
         <nav aria-label="Shop"><p className={head}>Shop</p>
           <ul className="space-y-2">{tree.flatMap((c) => [c, ...c.children]).map((c) => <li key={c.id}><Link href={`/c/${c.path}`} className={link}>{c.name}</Link></li>)}</ul>

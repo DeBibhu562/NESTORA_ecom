@@ -56,7 +56,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <button type="button" aria-expanded={menu} aria-controls="admin-nav" onClick={() => setMenu(!menu)} className="min-h-11 rounded-lg px-3 text-sm hover:bg-white/10">{menu ? "Close" : "Menu"}</button>
           </header>
           <aside id="admin-nav" className={`${menu ? "block" : "hidden"} bg-navy p-4 text-white md:sticky md:top-0 md:block md:h-screen md:w-60 md:shrink-0 md:overflow-y-auto`}>
-            <div className="mb-4 hidden font-[family-name:var(--font-heading)] text-xl md:block">Nestora <span className="text-white/60">Admin</span></div>
+            <div className="mb-4 hidden font-[family-name:var(--font-heading)] text-xl md:block">Livoware <span className="text-white/60">Admin</span></div>
             <button type="button" onClick={() => setFind(true)} className="mb-5 flex min-h-11 w-full items-center justify-between rounded-lg bg-white/10 px-3 text-sm text-white/70 hover:bg-white/15"><span>Search…</span><kbd className="rounded bg-white/15 px-1.5 py-0.5 text-xs">⌘K</kbd></button>
             <nav aria-label="Main" className="space-y-5">
               {groups.map((g) => (

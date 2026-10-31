@@ -1,3 +1,9 @@
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 # Storefront on :80, admin on :8081. Each site serves its own /v1 and /uploads from the API, so the browser never makes a cross-origin call.
 :80 {
 	encode gzip

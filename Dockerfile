@@ -6,7 +6,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 
 # Next.js bakes NEXT_PUBLIC_* in at build time, so changing a public URL means rebuilding the image.
-ARG NEXT_PUBLIC_BRAND_NAME=Nestora
+ARG NEXT_PUBLIC_BRAND_NAME=Livoware
 ARG NEXT_PUBLIC_WEB_API_URL
 ARG NEXT_PUBLIC_ADMIN_API_URL
 ARG NEXT_PUBLIC_SITE_URL

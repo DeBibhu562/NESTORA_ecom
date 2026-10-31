@@ -27,9 +27,9 @@ services:
       context: ..
       args:
         NEXT_PUBLIC_WEB_API_URL: "${PUBLIC_URL}/v1"
-        NEXT_PUBLIC_ADMIN_API_URL: "${ADMIN_URL}/v1"
+        NEXT_PUBLIC_ADMIN_API_URL: "/v1" # relative: the admin site proxies /v1 itself, so it works on any hostname
         NEXT_PUBLIC_SITE_URL: "${PUBLIC_URL}"
-        NEXT_PUBLIC_BRAND_NAME: "${BRAND_NAME:-Nestora}"
+        NEXT_PUBLIC_BRAND_NAME: "${BRAND_NAME:-Livoware}"
         NEXT_PUBLIC_FIREBASE_API_KEY: "${NEXT_PUBLIC_FIREBASE_API_KEY:-}"
         NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}"
         NEXT_PUBLIC_FIREBASE_PROJECT_ID: "${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}"
@@ -43,7 +43,7 @@ services:
       PUBLIC_API_URL: "${PUBLIC_URL}"
       CORS_ORIGINS: "${PUBLIC_URL},${ADMIN_URL}"
       UPLOAD_DIR: /app/apps/api/uploads
-      TRUST_PROXY: "1"
+      TRUST_PROXY: "${TRUST_PROXY:-1}"
     volumes: [uploads:/app/apps/api/uploads]
     depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_started } }
     healthcheck: { test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4010/v1/health || exit 1"], interval: 10s, retries: 12, start_period: 20s }

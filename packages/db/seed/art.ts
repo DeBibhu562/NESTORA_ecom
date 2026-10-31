@@ -104,7 +104,7 @@ export function showcaseSvg(kind: Kind, color: string) {
     out += `<rect x="${x + w * 0.16}" y="${top + 26}" width="${w * 0.07}" height="${h - 70}" rx="${w * 0.035}" fill="#fff" opacity=".45"/>`;
     out += `<rect x="${x}" y="${top + h * 0.12}" width="${w}" height="3" fill="${dk}" opacity=".35"/><rect x="${x}" y="${base - 56}" width="${w}" height="3" fill="${dk}" opacity=".35"/>`;
     if (kind === "copper") out += Array.from({ length: 40 }, (_, i) => `<circle cx="${x + 18 + ((i * 53) % (w - 36))}" cy="${top + 30 + Math.floor(i / 5) * 46}" r="9" fill="${lighter(color, 0.3)}" opacity=".28"/>`).join("");
-    if (kind === "vacuum" || kind === "single-wall") out += `<text x="${cx}" y="${top + h * 0.5 + 31}" font-family="Georgia,serif" font-size="26" letter-spacing="4" text-anchor="middle" fill="#fff" opacity=".9">NESTORA</text>`;
+    if (kind === "vacuum" || kind === "single-wall") out += `<text x="${cx}" y="${top + h * 0.5 + 31}" font-family="Georgia,serif" font-size="26" letter-spacing="4" text-anchor="middle" fill="#fff" opacity=".9">LIVOWARE</text>`;
     if (kind === "kids") out += `<circle cx="${cx - 34}" cy="${top + h * 0.45}" r="11" fill="#1b2a31"/><circle cx="${cx + 34}" cy="${top + h * 0.45}" r="11" fill="#1b2a31"/><path d="M${cx - 28} ${top + h * 0.56} q28 26 56 0" stroke="#1b2a31" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   }
   // lid
