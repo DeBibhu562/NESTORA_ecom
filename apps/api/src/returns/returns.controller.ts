@@ -42,7 +42,7 @@ export class ReturnsController {
   @Public() @Post("orders/:publicId/returns/photos")
   @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
   async photo(@Param("publicId") id: string, @UploadedFile() file: Express.Multer.File | undefined, @Req() req: Request) {
-    await this.limiter.guard(`retphoto:${req.ip}`, 20, 3_600_000, "Too many uploads, please try again later");
+    await this.limiter.guard(`retphoto:${req.ip}`, 10, 3_600_000, "Too many uploads, please try again later");
     await this.svc.options(id.slice(0, 64)); // 404 for unknown orders
     if (!file) throw new BadRequestException("file is required");
     let t: string | undefined;

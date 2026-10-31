@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import { createHmac } from "node:crypto";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
-import { boot, client } from "../test-utils";
+import { boot, client, adminLogin } from "../test-utils";
 
 const db = new PrismaClient();
 const tag = Date.now().toString(36);
@@ -31,7 +31,7 @@ async function cartWith(qty = 1) {
 beforeAll(async () => {
   ({ app, url } = await boot());
   owner = client(url);
-  await owner.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" });
+  await adminLogin(app, owner, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345");
   const lvl = await db.inventoryLevel.findFirstOrThrow({ where: { onHand: { gte: 20 }, reserved: 0, warehouse: { isActive: true }, variant: { isActive: true, product: { status: "ACTIVE", deletedAt: null } } }, include: { variant: true } });
   variant = { id: lvl.variantId, pricePaise: lvl.variant.pricePaise, warehouseId: lvl.warehouseId };
   // Razorpay is stubbed; everything else (our own API) goes through the real fetch.

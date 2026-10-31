@@ -1,6 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { boot, client } from "../test-utils";
+import { boot, client, adminLogin } from "../test-utils";
 
 let app: INestApplication, url: string;
 beforeAll(async () => { ({ app, url } = await boot()); });
@@ -8,7 +8,7 @@ afterAll(async () => { await app.close(); });
 
 it("banners: admin CRUD, only live slides are public, off-site links are rejected", async () => {
   const o = client(url);
-  await o.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" });
+  await adminLogin(app, o, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345");
   const body = { title: "Test slide", subtitle: null, ctaLabel: "Go", imageUrl: "http://localhost:4010/uploads/seed/hero.svg", link: "/c/bottles", position: 1, isActive: true };
   expect((await o.call("POST", "/admin/banners", { ...body, link: "https://evil.example" })).status).toBe(400);
   const made = await o.call("POST", "/admin/banners", body);

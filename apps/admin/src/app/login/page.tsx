@@ -7,7 +7,7 @@ import { ApiError, post } from "@/lib/api";
 
 export default function Login() {
   const router = useRouter();
-  const [needTotp, setNeedTotp] = useState(false);
+  const [needOtp, setNeedOtp] = useState(false);
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
 
@@ -16,10 +16,10 @@ export default function Login() {
     const f = new FormData(e.currentTarget);
     setBusy(true); setError(undefined);
     try {
-      await post("/admin/auth/login", { email: f.get("email"), password: f.get("password"), ...(f.get("totp") ? { totp: f.get("totp") } : {}) });
+      await post("/admin/auth/login", { email: f.get("email"), password: f.get("password"), ...(f.get("otp") ? { otp: f.get("otp") } : {}) });
       router.replace("/");
     } catch (err) {
-      if (err instanceof ApiError && err.code === "TOTP_REQUIRED") setNeedTotp(true);
+      if (err instanceof ApiError && err.code === "OTP_REQUIRED") setNeedOtp(true);
       else setError(err);
     } finally { setBusy(false); }
   }
@@ -30,7 +30,7 @@ export default function Login() {
         <Card title="Sign in">
           <Field label="Email"><Input name="email" type="email" required autoComplete="username" autoFocus /></Field>
           <Field label="Password"><Input name="password" type="password" required autoComplete="current-password" /></Field>
-          {needTotp && <Field label="Authenticator code"><Input name="totp" inputMode="numeric" pattern="\d{6}" maxLength={6} required autoFocus autoComplete="one-time-code" /></Field>}
+          {needOtp && <Field label="Code emailed to you"><Input name="otp" inputMode="numeric" pattern="\d{6}" maxLength={6} required autoFocus autoComplete="one-time-code" /></Field>}
           <Problems error={error} />
           <Button type="submit" disabled={busy} className="w-full">{busy ? "Signing in…" : "Sign in"}</Button>
         </Card>

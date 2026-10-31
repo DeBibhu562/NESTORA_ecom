@@ -2,7 +2,10 @@
 FROM node:22-alpine AS app
 RUN corepack enable && apk add --no-cache openssl libc6-compat
 WORKDIR /app
-COPY . .
+COPY --chown=node:node . .
+# the uploads volume inherits this ownership; /app itself must be writable for install and builds
+RUN chown node:node /app && mkdir -p apps/api/uploads && chown node:node apps/api/uploads
+USER node
 RUN pnpm install --frozen-lockfile
 
 # Next.js bakes NEXT_PUBLIC_* in at build time, so changing a public URL means rebuilding the image.

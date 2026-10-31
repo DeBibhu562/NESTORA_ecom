@@ -61,6 +61,7 @@ export class ReturnsService {
     });
     await this.db.orderEvent.create({ data: { orderId: o.id, type: "return", message: `Return ${ret.returnNumber} requested`, actor: "customer" } });
     void this.messenger.send(o.id, "RETURN_REQUESTED", { returnNumber: ret.returnNumber });
+    void this.messenger.alertAdmin(o.id, `Return requested (${ret.returnNumber})`, `Reason: ${b.reason.toLowerCase().replace("_", " ")}${b.details ? ` - ${b.details}` : ""}\nReview it under Returns in admin.`);
     return ret;
   }
 

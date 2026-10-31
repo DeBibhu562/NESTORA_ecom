@@ -2,6 +2,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { AppModule } from "./app.module";
+import { Notifier } from "./notify/notifier.service";
 import { setup } from "./setup";
 
 export async function boot() {
@@ -31,4 +32,12 @@ export function client(url: string) {
     return { status: res.status, body: text ? JSON.parse(text) : null, jar };
   };
   return { call, jar };
+}
+
+/** Staff sign-in as a new device: password, then the emailed code. */
+export async function adminLogin(app: INestApplication, c: ReturnType<typeof client>, email: string, password: string) {
+  const first = await c.call("POST", "/admin/auth/login", { email, password });
+  if (first.body?.code !== "OTP_REQUIRED") return first;
+  const mail = [...app.get(Notifier).outbox].reverse().find((m) => m.to === email)!;
+  return c.call("POST", "/admin/auth/login", { email, password, otp: /(\d{6})/.exec(mail.subject)![1] });
 }

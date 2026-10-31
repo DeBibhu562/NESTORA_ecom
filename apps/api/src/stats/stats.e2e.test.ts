@@ -1,6 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { boot, client } from "../test-utils";
+import { boot, client, adminLogin } from "../test-utils";
 
 let app: INestApplication, url: string;
 beforeAll(async () => { ({ app, url } = await boot()); });
@@ -9,7 +9,7 @@ afterAll(async () => { await app.close(); });
 it("returns a full-length series and rejects anonymous callers and bad ranges", async () => {
   expect((await client(url).call("GET", "/admin/stats/overview")).status).toBe(401);
   const o = client(url);
-  await o.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" });
+  await adminLogin(app, o, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345");
   const r = await o.call("GET", "/admin/stats/overview?range=7d");
   expect(r.status).toBe(200);
   expect(r.body.series).toHaveLength(7);

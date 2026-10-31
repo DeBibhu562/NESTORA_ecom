@@ -77,9 +77,6 @@ export default function Shell({ children }: { children: ReactNode }) {
             </div>
           </aside>
           <main id="main" className="min-w-0 flex-1 p-4 md:p-8">
-            {!me.mfa && path !== "/security" && (
-              <p className="mb-4 rounded-lg bg-gold/20 p-3 text-sm">Two-factor authentication is not enabled. <Link className="underline" href="/security">Set it up</Link>.</p>
-            )}
             {children}
           </main>
         </div>

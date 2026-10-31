@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { hashPassword } from "../auth/crypto";
-import { boot, client } from "../test-utils";
+import { boot, client, adminLogin } from "../test-utils";
 
 const db = new PrismaClient();
 const tag = Date.now().toString(36);
@@ -19,8 +19,8 @@ beforeAll(async () => {
   support = client(url);
   const role = await db.role.findUniqueOrThrow({ where: { name: "Support Agent" } });
   staffId = (await db.staffUser.create({ data: { email: `settings-${tag}@test.dev`, name: "S", passwordHash: await hashPassword("Support!12345"), roleId: role.id } })).id;
-  await owner.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" });
-  await support.call("POST", "/admin/auth/login", { email: `settings-${tag}@test.dev`, password: "Support!12345" });
+  await adminLogin(app, owner, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345");
+  await adminLogin(app, support, `settings-${tag}@test.dev`, "Support!12345");
   original = (await owner.call("GET", "/admin/settings/shipping")).body;
 });
 

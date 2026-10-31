@@ -30,6 +30,18 @@ export class OrderMessenger {
   private readonly log = new Logger("OrderMessenger");
   constructor(private readonly db: PrismaService, private readonly notify: Notifier) {}
 
+  /** One-line alert to the shop owner with a link to the order in admin. Never throws. */
+  async alertAdmin(orderId: string, subject: string, extra = ""): Promise<void> {
+    try {
+      const o = await this.db.order.findUnique({ where: { id: orderId }, include: { items: true, payments: { take: 1, orderBy: { createdAt: "desc" } } } });
+      if (!o) return;
+      const a = o.shippingAddress as { name?: string; city?: string; state?: string };
+      const lines = o.items.map((i) => `  ${i.qty} x ${i.title} (${i.variantTitle})${i.engraving ? ` engraved "${i.engraving}"` : ""}`).join("\n");
+      const link = env.ADMIN_URL ? `\n\nOpen in admin: ${env.ADMIN_URL}/orders/${o.id}` : "";
+      await this.notify.admin(`${subject}: ${o.orderNumber}`, `${subject}\n\nOrder ${o.orderNumber}, ${rs(o.totalPaise)} (${o.payments[0]?.method === "COD" ? "cash on delivery" : "paid online"})\nCustomer: ${a.name ?? ""}, ${o.phone}${o.email ? `, ${o.email}` : ""}\nShip to: ${a.city ?? ""}, ${a.state ?? ""}\n\n${lines}${extra ? `\n\n${extra}` : ""}${link}`);
+    } catch (e) { this.log.error(`admin alert ${subject} ${orderId}: ${e}`); }
+  }
+
   /** Sends on every configured channel and records the outcome. Never throws: a failed email must not fail the order action. */
   async send(orderId: string, template: Template, extra: Partial<Ctx> = {}): Promise<void> {
     try {

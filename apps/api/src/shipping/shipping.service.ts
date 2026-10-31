@@ -50,6 +50,7 @@ export class ShippingService implements OnModuleInit, OnModuleDestroy {
       ...(mapped && sh.status !== "DELIVERED" ? [this.db.shipment.update({ where: { id: sh.id }, data: { status: mapped } })] : []),
       ...(mapped === "RTO" && sh.status !== "RTO" ? [this.db.orderEvent.create({ data: { orderId: sh.orderId, type: "rto", message: "Delivery failed, the courier is returning the parcel", actor: "courier" } })] : []),
     ]);
+    if (mapped === "RTO" && sh.status !== "RTO") void this.messenger.alertAdmin(sh.orderId, "Delivery failed (returning to you)", `Courier status: ${statusText}`);
     if (mapped === "OFD" && sh.status !== "OFD") void this.messenger.send(sh.orderId, "OUT_FOR_DELIVERY");
     if (mapped === "DELIVERED" && sh.order.status === "SHIPPED") await this.checkout.advance(sh.orderId, "DELIVERED", "courier");
     return true;

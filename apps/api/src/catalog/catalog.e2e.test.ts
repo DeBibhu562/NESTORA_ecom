@@ -1,8 +1,10 @@
+import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { hashPassword } from "../auth/crypto";
-import { boot, client } from "../test-utils";
+import { Notifier } from "../notify/notifier.service";
+import { boot, client, adminLogin } from "../test-utils";
 
 const db = new PrismaClient();
 const tag = Date.now().toString(36);
@@ -23,8 +25,8 @@ beforeAll(async () => {
   const role = await db.role.findUniqueOrThrow({ where: { name: "Support Agent" } });
   const st = await db.staffUser.create({ data: { email: `support-${tag}@test.dev`, name: "S", passwordHash: await hashPassword("Support!12345"), roleId: role.id } });
   created.staff.push(st.id);
-  expect((await owner.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" })).status).toBe(200);
-  expect((await support.call("POST", "/admin/auth/login", { email: `support-${tag}@test.dev`, password: "Support!12345" })).status).toBe(200);
+  expect((await adminLogin(app, owner, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345")).status).toBe(200);
+  expect((await adminLogin(app, support, `support-${tag}@test.dev`, "Support!12345")).status).toBe(200);
   const cats = await owner.call("GET", "/admin/categories");
   categoryId = cats.body.find((c: { slug: string }) => c.slug === "bottles").children.find((c: { slug: string }) => c.slug === "vacuum").id;
   warehouseId = (await owner.call("GET", "/admin/inventory/warehouses")).body[0].id;
@@ -51,9 +53,47 @@ describe("auth", () => {
     expect((await anon.call("POST", "/admin/auth/login", { email: "nobody@example.com", password: "wrong" })).status).toBe(401);
   });
 
+  it("locks an account out across IPs, rejects customer tokens, honours deactivation immediately and changes password", async () => {
+    const email = `sec-${tag}@test.dev`;
+    const role = await db.role.findUniqueOrThrow({ where: { name: "Support Agent" } });
+    const st = await db.staffUser.create({ data: { email, name: "Sec", passwordHash: await hashPassword("Old-password-123"), roleId: role.id } });
+    created.staff.push(st.id);
+    const c = client(url);
+    expect((await adminLogin(app, c, email, "Old-password-123")).status).toBe(200);
+    expect((await c.call("GET", "/admin/auth/me")).status).toBe(200);
+
+    // a token without the staff audience is refused
+    const bad = jwt.sign({}, process.env.JWT_SECRET!, { subject: st.id, audience: "customer", algorithm: "HS256" });
+    expect((await fetch(`${url}/v1/admin/auth/me`, { headers: { cookie: `at=${bad}` } })).status).toBe(401);
+
+    // password change: weak rejected, wrong current rejected, then old password and old devices stop working
+    expect((await c.call("POST", "/admin/auth/password", { current: "Old-password-123", password: "short" })).status).toBe(400);
+    expect((await c.call("POST", "/admin/auth/password", { current: "nope", password: "New-password-1234" })).status).toBe(401);
+    expect((await c.call("POST", "/admin/auth/password", { current: "Old-password-123", password: "New-password-1234" })).status).toBe(200);
+    expect(await db.trustedDevice.count({ where: { staffId: st.id } })).toBe(0);
+    expect((await client(url).call("POST", "/admin/auth/login", { email, password: "Old-password-123" })).status).toBe(401);
+
+    // deactivation applies on the very next request
+    await db.staffUser.update({ where: { id: st.id }, data: { isActive: false } });
+    expect((await c.call("GET", "/admin/auth/me")).status).toBe(401);
+
+    // failures from many different "browsers" still lock the account (the per-IP counter alone would not)
+    for (let i = 0; i < 20; i++) await client(url).call("POST", "/admin/auth/login", { email, password: "guess" });
+    expect((await client(url).call("POST", "/admin/auth/login", { email, password: "New-password-1234" })).status).toBe(429);
+  });
+
   it("sets httpOnly cookies and rotates refresh tokens, revoking all sessions on reuse", async () => {
     const c = client(url);
-    const r = await fetch(`${url}/v1/admin/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@example.com", password: "ChangeMe!12345" }) });
+    const login = (extra: object = {}, cookie = "") => fetch(`${url}/v1/admin/auth/login`, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ email: "owner@example.com", password: "ChangeMe!12345", ...extra }) });
+    expect((await login()).status).toBe(401); // new device: code emailed
+    const code = /(\d{6})/.exec([...app.get(Notifier).outbox].reverse().find((m) => m.to === "owner@example.com")!.subject)![1]!;
+    expect((await login({ otp: code === "000000" ? "111111" : "000000" })).status).toBe(401);
+    const r = await login({ otp: code });
+    expect(r.status).toBe(200);
+    const dt = r.headers.getSetCookie().find((x) => x.startsWith("dt="))!.split(";")[0]!;
+    expect((await login({}, dt)).status).toBe(200); // trusted device skips the code
+    await db.trustedDevice.updateMany({ data: { verifiedAt: new Date(Date.now() - 31 * 86400_000) } });
+    expect((await login({}, dt)).status).toBe(401); // 30 days passed: code again
     const cookies = r.headers.getSetCookie();
     expect(cookies.every((x) => /HttpOnly/i.test(x))).toBe(true);
     const rt1 = cookies.find((x) => x.startsWith("rt="))!.split(";")[0]!.slice(3);

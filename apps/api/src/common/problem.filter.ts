@@ -26,7 +26,11 @@ export class ProblemFilter implements ExceptionFilter {
       };
       const [s, title] = map[e.code] ?? [500, "Database error"];
       status = s;
-      body = { title, ...(status < 500 ? { detail: JSON.stringify(e.meta ?? {}) } : {}) };
+      body = { title }; // e.meta names tables and columns, so it stays in the logs
+      if (status >= 500) this.log.error(`${e.code} ${JSON.stringify(e.meta)}`);
+    } else if (typeof (e as { status?: unknown }).status === "number" && (e as { status: number }).status < 500) {
+      status = (e as { status: number }).status; // body-parser errors such as 413 Payload Too Large
+      body = { title: status === 413 ? "Request too large" : "Bad request" };
     }
     if (status >= 500) this.log.error(e instanceof Error ? e.stack : String(e));
     res.status(status).type("application/problem+json").json({ status, ...body });

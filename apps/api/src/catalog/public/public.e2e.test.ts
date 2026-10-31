@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { boot, client } from "../../test-utils";
+import { boot, client, adminLogin } from "../../test-utils";
 
 // Relies on the seeded demo catalog (pnpm db:seed): 12 active bottles in the "bottles" tree.
 const db = new PrismaClient();
@@ -137,7 +137,7 @@ describe("stock alerts", () => {
 describe("visibility", () => {
   it("hides drafts and unpublished products until published; hides them again when archived", async () => {
     const owner = client(url);
-    await owner.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" });
+    await adminLogin(app, owner, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345");
     const cat = (await owner.call("GET", "/admin/categories")).body.find((c: { slug: string }) => c.slug === "bottles").children.find((c: { slug: string }) => c.slug === "vacuum");
     const p = (await owner.call("POST", "/admin/products", { title: `Visibility Test ${Date.now()}`, categoryId: cat.id, hsnCode: "7323", gstRateBp: 1800, descriptionHtml: "<p>x</p>", attributes: { material: "SS 304", country_of_origin: "India", manufacturer: "T" }, options: [{ name: "Capacity", values: [{ value: "500 ml" }] }] })).body;
     try {

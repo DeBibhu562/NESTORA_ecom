@@ -8,8 +8,6 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32),
   PORT: z.coerce.number().default(4010),
   CORS_ORIGINS: z.string().default("http://localhost:3020,http://localhost:3001"),
-  // Staff must have TOTP enabled to use the admin API (plan §4.3). Off by default outside production.
-  REQUIRE_TOTP: bool.default(process.env.NODE_ENV === "production" ? "true" : "false"),
   STOCK_ALERT_LIMIT_PER_HOUR: z.coerce.number().int().positive().default(10), // per IP; raise in dev/e2e
   // Cookies are Secure (HTTPS-only) in production. Set COOKIE_SECURE=false only while serving over plain http (e.g. a bare IP); use HTTPS as soon as there is a domain.
   COOKIE_SECURE: bool.optional(),
@@ -18,6 +16,9 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default("uploads"),
   // Email: Gmail works with an app password, e.g. smtps://you%40gmail.com:APP_PASSWORD@smtp.gmail.com:465. Unset = emails are only logged.
   SMTP_URL: z.string().optional(),
+  // Shop owner inbox(es), comma separated: new orders, returns, refunds to pay and back-in-stock requests are emailed here.
+  ADMIN_EMAIL: z.string().optional(),
+  ADMIN_URL: z.string().url().optional(), // used for links in those emails
   MAIL_FROM: z.string().default("Livoware <no-reply@livoware.store>"),
   // Google sign-in is verified against this Firebase project; unset = Google login is off.
   FIREBASE_PROJECT_ID: z.string().optional(),
@@ -39,4 +40,6 @@ const schema = z.object({
 
 // Fail fast at boot on bad config
 export const env = schema.parse(process.env);
+// the deploy example's placeholder is long enough to pass min(32); running with it would let anyone forge admin tokens
+if (process.env.NODE_ENV === "production" && /change-?me/i.test(env.JWT_SECRET)) throw new Error("JWT_SECRET is still the placeholder from .env.example");
 export const cookieSecure = env.COOKIE_SECURE ?? process.env.NODE_ENV === "production";

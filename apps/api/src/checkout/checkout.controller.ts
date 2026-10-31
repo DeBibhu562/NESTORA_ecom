@@ -35,6 +35,7 @@ export class CheckoutController {
   @Post("checkout/orders") @HttpCode(200)
   async place(@Body(new ZodPipe(checkoutDto)) b: z.infer<typeof checkoutDto>, @Headers("idempotency-key") key: string | undefined, @Req() req: Request) {
     await this.limiter.guard(`order:${req.ip}`, 10, 60_000, "Too many attempts, please wait a minute");
+    await this.limiter.guard(`orderphone:${b.phone}`, process.env.NODE_ENV === "test" ? 1000 : 5, 86_400_000, "Too many orders from this phone number today. Please contact support.");
     if (!key || !/^[\w-]{8,64}$/.test(key)) throw new BadRequestException({ title: "Idempotency-Key header is required" });
     return this.svc.place(req.cookies?.ct, key, b, userIdFrom(req));
   }

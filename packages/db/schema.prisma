@@ -108,8 +108,21 @@ model StaffUser {
   isActive     Boolean    @default(true)
   lastLoginAt  DateTime?
   sessions     Session[]
+  devices      TrustedDevice[]
   auditLogs    AuditLog[]
   createdAt    DateTime   @default(now())
+}
+
+// A browser that passed an emailed code; it skips the code until verifiedAt is 30 days old
+model TrustedDevice {
+  id         String    @id @default(cuid())
+  staffId    String
+  staff      StaffUser @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  verifiedAt DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([staffId])
 }
 
 model Role {

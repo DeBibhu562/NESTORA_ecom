@@ -18,6 +18,13 @@ export class Notifier {
     catch (e) { this.log.error(`email to ${to} failed: ${e}`); return false; }
   }
 
+  /** Tells the shop owner something needs attention. A no-op until ADMIN_EMAIL is set. */
+  async admin(subject: string, text: string): Promise<boolean> {
+    if (!env.ADMIN_EMAIL) return false;
+    const to = env.ADMIN_EMAIL.split(",").map((s) => s.trim()).filter(Boolean).join(",");
+    return this.email(to, subject, text);
+  }
+
   /** `phone` in E.164 (+91…). Free-form text only works inside WhatsApp's 24h window; switch to approved templates once the account is live. */
   async whatsapp(phone: string, text: string): Promise<boolean> {
     if (process.env.NODE_ENV === "test" || !env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_ID) return false;

@@ -18,6 +18,8 @@ async function main() {
   const owner = await prisma.role.findUniqueOrThrow({ where: { name: "Owner" } });
   const email = process.env.SEED_OWNER_EMAIL ?? "owner@example.com";
   const password = process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345";
+  if (process.env.NODE_ENV === "production" && (!process.env.SEED_OWNER_PASSWORD || /change-?me/i.test(password) || password.length < 12))
+    throw new Error("Set SEED_OWNER_EMAIL and a strong SEED_OWNER_PASSWORD (12+ chars) before seeding production");
   await prisma.staffUser.upsert({
     where: { email },
     update: {},

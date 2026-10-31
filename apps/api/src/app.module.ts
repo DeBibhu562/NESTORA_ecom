@@ -34,6 +34,6 @@ import { PrismaService } from "./prisma.service";
   imports: [CatalogModule],
   controllers: [HealthController, AuthController, CartController, SettingsController, OffersController, CheckoutController, OrdersAdminController, CustomerAuthController, StatsController, CustomersAdminController, BannersController, CatalogExtrasController, ShippingController, ReturnsController],
   providers: [PrismaService, AuditService, Limiter, AuthService, CartService, CheckoutService, CustomerAuthService, Notifier, OrderMessenger, OrderJobs, ShippingService, ReturnsService, SettingsService, { provide: APP_GUARD, useClass: AuthGuard }],
-  exports: [PrismaService, AuditService, Limiter],
+  exports: [PrismaService, AuditService, Limiter, Notifier],
 })
 export class AppModule {}

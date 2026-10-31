@@ -1,6 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { boot, client } from "../test-utils";
+import { boot, client, adminLogin } from "../test-utils";
 
 let app: INestApplication, url: string;
 beforeAll(async () => { ({ app, url } = await boot()); });
@@ -8,7 +8,7 @@ afterAll(async () => { await app.close(); });
 
 it("brands are deduplicated; hand-picked related products lead the storefront list", async () => {
   const o = client(url);
-  await o.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" });
+  await adminLogin(app, o, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345");
   const a = await o.call("POST", "/admin/brands", { name: "Test Brand X" });
   const b = await o.call("POST", "/admin/brands", { name: "test brand x" });
   expect(b.body.id).toBe(a.body.id);

@@ -1,7 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
-import { boot, client } from "../test-utils";
+import { boot, client, adminLogin } from "../test-utils";
+import { Notifier } from "../notify/notifier.service";
 import { OrderJobs } from "./jobs.service";
 
 const db = new PrismaClient();
@@ -19,7 +20,7 @@ const hook = (status: string, at: string, token = "srtok") => realFetch(`${url}/
 beforeAll(async () => {
   ({ app, url } = await boot());
   owner = client(url);
-  await owner.call("POST", "/admin/auth/login", { email: "owner@example.com", password: process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345" });
+  await adminLogin(app, owner, "owner@example.com", process.env.SEED_OWNER_PASSWORD ?? "ChangeMe!12345");
   const lvl = await db.inventoryLevel.findFirstOrThrow({ where: { onHand: { gte: 20 }, reserved: 0, warehouse: { isActive: true }, variant: { isActive: true, product: { status: "ACTIVE", deletedAt: null } } }, include: { variant: true } });
   variant = { id: lvl.variantId, pricePaise: lvl.variant.pricePaise, warehouseId: lvl.warehouseId };
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
@@ -85,6 +86,9 @@ it("runs an order from placed to refunded: courier booking, webhooks, invoice, r
   expect((await owner.call("GET", "/admin/orders/queues")).body).toHaveProperty("inTransit");
   expect((await owner.call("GET", `/admin/orders/${order.id}`)).body.messages.length).toBeGreaterThan(3);
 
+  const mails = app.get(Notifier).outbox;
+  expect(mails.some((m) => m.to === "shop@example.com" && m.subject.startsWith(`New order: ${order.orderNumber}`))).toBe(true);
+
   const guest = client(url);
   const opts = await guest.call("GET", `/orders/${placed.publicId}/returns`);
   expect(opts.body).toMatchObject({ eligible: true, daysLeft: 7, cod: true });
@@ -122,6 +126,9 @@ it("runs an order from placed to refunded: courier booking, webhooks, invoice, r
   const late = await guest.call("POST", `/orders/${placed.publicId}/returns`, { ...ask, ...upi });
   expect(late.status).toBe(409);
   expect(JSON.stringify(late.body)).toMatch(/window/);
+
+  expect(mails.some((m) => m.to === "shop@example.com" && m.subject.startsWith(`Return requested`))).toBe(true);
+  expect(mails.some((m) => m.to === "shop@example.com" && m.subject.startsWith(`Refund to pay`))).toBe(true);
 
   await app.get(OrderJobs).closeExpired();
   expect((await db.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe("CLOSED"); // window over, no open return

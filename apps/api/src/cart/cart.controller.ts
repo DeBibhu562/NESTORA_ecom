@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Req, 
 import type { CookieOptions, Request, Response } from "express";
 import { z } from "zod";
 import { Public } from "../auth/auth.types";
+import { Limiter } from "../common/limiter.service";
 import { ZodPipe } from "../common/zod.pipe";
 import { CartService, ENGRAVING_MAX, MAX_QTY_PER_LINE } from "./cart.service";
 import { cookieSecure } from "../env";
@@ -19,7 +20,7 @@ const couponDto = z.object({ code: z.string().trim().toUpperCase().min(1).max(40
 @Public()
 @Controller("cart")
 export class CartController {
-  constructor(private readonly cart: CartService) {}
+  constructor(private readonly cart: CartService, private readonly limiter: Limiter) {}
 
   @Get() get(@Req() req: Request) { return this.cart.viewByToken(req.cookies?.ct); }
 
@@ -42,6 +43,7 @@ export class CartController {
 
   @Put("coupon")
   async coupon(@Body(new ZodPipe(couponDto)) b: z.infer<typeof couponDto>, @Req() req: Request) {
+    await this.limiter.guard(`coupon:${req.ip}`, 20, 60_000, "Too many coupon attempts, please wait a minute");
     return this.cart.view((await this.cart.setCoupon(req.cookies?.ct, b.code)).id);
   }
 }

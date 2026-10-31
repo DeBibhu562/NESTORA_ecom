@@ -108,7 +108,7 @@ export class CheckoutService implements OnModuleInit, OnModuleDestroy {
     return this.result(order.publicId);
   }
 
-  private confirmation(orderId: string) { return this.messenger.send(orderId, "PLACED"); }
+  private confirmation(orderId: string) { void this.messenger.alertAdmin(orderId, "New order"); return this.messenger.send(orderId, "PLACED"); }
 
   /** Holds stock in the first warehouse that can cover the whole line. The CHECK constraint (reserved <= onHand) backs the WHERE clause. */
   private async reserve(tx: Tx, orderId: string, variantId: string, qty: number, expiresAt: Date) {
@@ -182,6 +182,7 @@ export class CheckoutService implements OnModuleInit, OnModuleDestroy {
     const paid = o.payments.find((p) => p.status === "CAPTURED");
     if (paid) await this.refund(paid.id, reason, actor);
     void this.messenger.send(orderId, "CANCELLED", { note: reason });
+    if (actor === "customer") void this.messenger.alertAdmin(orderId, "Order cancelled by customer", `Reason: ${reason}`);
   }
 
   /**
@@ -203,6 +204,7 @@ export class CheckoutService implements OnModuleInit, OnModuleDestroy {
     const { r, p, amount, total } = created;
     if (manual) {
       await this.db.orderEvent.create({ data: { orderId: p.orderId, type: "refund", message: `Refund of ₹${(amount / 100).toFixed(2)} awaiting payout to the customer`, actor } });
+      void this.messenger.alertAdmin(p.orderId, "Refund to pay", `Pay ₹${(amount / 100).toFixed(2)} to the customer by ${opts.method}, then mark it paid under Refunds to pay in admin.`);
       return r;
     }
     let providerRefundId: string | null = null, status = "PENDING_MANUAL";
